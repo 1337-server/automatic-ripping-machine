@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Home{% endblock %}
-{% block head_extra %}<meta http-equiv="refresh" content="30">{% endblock %}
+{% block head_extra %}<!--<meta http-equiv="refresh" content="30">-->{% endblock %}
 
 {% block nav %}{{ super() }}{% endblock %}
 
@@ -51,85 +51,8 @@ div.card-body button,div.card-body a{
     </div>
     <div class="row h-100 align-items-center">
         <div class="col-md-12 mx-auto">
-            <div class="card-deck">
-                {% for job in jobs %}
-                <div id="id{{ job.job_id }}" class="col-md-4">
-                    <div class="card mb-3  mx-auto" style="max-width: 600px">
-                        <div class="row no-gutters">
-                            <div class="col-lg-4">
-                                {% if not job.poster_url %}
-                                <a href="jobdetail?job_id={{ job.job_id }}"><img src="static/img/none.png" width="240px"
-                                                                                 class="img-thumbnail"></a>
-                                {% else %}
-                                <a href="jobdetail?job_id={{ job.job_id }}"><img src="{{ job.poster_url }}"
-                                                                                 width="240px"
-                                                                                 class="img-thumbnail"></a>
-                                {% endif %}
-                            </div>
-                            <div class="col-lg-4">
-                                <div class="card-body px-1 py-1">
-                                    {% if not job.title_manual %}
-                                    <b>{{ job["title"] }}</b><br>
-                                    {% else %}
-                                    <del><b>{{ job["title_auto"] }}</b><br></del>
-                                    <b>{{ job["title"] }}</b><br>
-                                    {% endif %}
-                                    <b>Type: </b> {{ job.video_type }} <br>
-                                    {% if not job.title_manual %}
-                                    <b>Year: </b>({{ job["year"] }})<br>
-                                    {% else %}
-                                    <del><b>Year:
-                                    </b>{{ job["year_auto"] }}<br></del>
-                                    <b>Year: </b> {{ job["year"] }}<br>
-                                    {% endif %}
-                                    <b>Device: </b>{{ job.devpath }}<br>
-                                    <b>Status: </b>{{ job.status }} <br>
-                                    {%  if job.status == "transcoding" %}
-										<div class="progress">
-											<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="{{ job.progress_round }}" aria-valuemin="0" aria-valuemax="100" style="width: {{ job.progress_round }}%">
-											<small class="justify-content-center d-flex position-absolute w-100"><b>Progress: </b>{{ job.progress }}%</small>
-                                            </div>
-										</div>
-                                        <b>ETA: </b>{{ job.eta }} <br>
-                                    {% endif %}
-                                   {% if job.video_type != "Music" %}
-                                    <a href="titlesearch?job_id={{ job.job_id }}"
-                                    class="btn btn-primary">Title Search</a>
-                                    {% endif %}
-                                    </li>
-                                </div>
-                            </div>
-                            <div class="col-lg-4">
-                                <div class="card-body px-1 py-1">
-                                    <b>Rip Method: </b>{{ job.config.RIPMETHOD }}
-                                    <br>
-                                    <b>Main Feature:
-                                    </b>{{ job.config.MAINFEATURE }} <br>
-                                    <b>Min Length:
-                                    </b>{{ job.config.MINLENGTH }}<br>
-                                    <b>Max Length:
-                                    </b>{{ job.config.MAXLENGTH }}<br>
-                                    {% if job.video_type != "Music" %}
-                                    <a href="changeparams?config_id={{ job.job_id }}"
-                                       class="btn btn-primary">Change
-                                        Settings</a>
-                                    {% endif %}
-                                </div>
-                                <div class="card-body px-1 py-1">
-                                    {% if job.video_type != "Music" %}
-                                    <a href="customTitle?job_id={{ job.job_id }}"
-                                    class="btn btn-primary">Custom Title</a>
-                                    {% endif %}
-									<br>
-                                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal" data-type="abandon" data-jobid="{{ job.job_id }}" data-href="/json?job={{ job.job_id }}&mode=abandon">Abandon Job</button>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
+            <div id="joblist" class="card-deck"></div>
+            <div id="tempjoblist" style="display: none" class="card-deck"></div>
         </div>
     </div>
 </div>
@@ -191,6 +114,27 @@ div.card-body button,div.card-body a{
     <div class="col-sm-4 mx-auto"></div>
 </div>
 </div>
+<script>
+    function refreshJobs() {
+        $.ajax({
+            url: "/joblist",
+            type: "get",
+            success: function(response) {
+                $("#tempjoblist").html(response);
+
+                //console.log($("#joblist").html());
+                //console.log($("#tempjoblist").html());
+                //console.log($("#joblist").html()!==$("#tempjoblist").html());
+
+                if ($("#joblist").html()!==$("#tempjoblist").html()) {
+                    $("#joblist").html($("#tempjoblist").html());
+                }
+            }
+        });
+    }
+    refreshJobs();
+    var intervalId = window.setInterval(refreshJobs, 5000);
+</script>
 <script type="application/javascript">
         var hrrref = "";
         var wedeleted = "{{ success }}";

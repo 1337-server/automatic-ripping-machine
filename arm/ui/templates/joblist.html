@@ -1,0 +1,77 @@
+{% for job in jobs %}
+    <div id="id{{ job.job_id }}" class="col-md-4">
+        <div class="card mb-3  mx-auto" style="max-width: 600px">
+            <div class="row no-gutters">
+                <div class="col-lg-4">
+                    {% if not job.poster_url %}
+                        <a href="jobdetail?job_id={{ job.job_id }}"><img src="static/img/none.png" width="240px"
+                                                                         class="img-thumbnail"></a>
+                    {% else %}
+                        <a href="jobdetail?job_id={{ job.job_id }}"><img src="{{ job.poster_url }}"
+                                                                         width="240px"
+                                                                         class="img-thumbnail"></a>
+                    {% endif %}
+                </div>
+                <div class="col-lg-4">
+                    <div class="card-body px-1 py-1">
+                        {% if not job.title_manual %}
+                            <b>{{ job["title"] }}</b><br>
+                        {% else %}
+                            <del><b>{{ job["title_auto"] }}</b><br></del>
+                            <b>{{ job["title"] }}</b><br>
+                        {% endif %}
+                        <b>Type: </b> {{ job.video_type }} <br>
+                        {% if not job.title_manual %}
+                            <b>Year: </b>({{ job["year"] }})<br>
+                        {% else %}
+                            <del><b>Year:
+                            </b>{{ job["year_auto"] }}<br></del>
+                            <b>Year: </b> {{ job["year"] }}<br>
+                        {% endif %}
+                        <b>Device: </b>{{ job.devpath }}<br>
+                        <b>Status: </b>{{ job.status }} <br>
+                        {% if job.status == "transcoding" %}
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="{{ job.progress_round }}" aria-valuemin="0" aria-valuemax="100" style="width: {{ job.progress_round }}%">
+                                    <small class="justify-content-center d-flex position-absolute w-100"><b>Progress: </b>{{ job.progress }}%</small>
+                                </div>
+                            </div>
+                            <b>ETA: </b>{{ job.eta }} <br>
+                        {% endif %}
+                        {% if job.video_type != "Music" %}
+                            <a href="titlesearch?job_id={{ job.job_id }}"
+                               class="btn btn-primary">Title Search</a>
+                        {% endif %}
+                        </li>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card-body px-1 py-1">
+                        <b>Rip Method: </b>{{ job.config.RIPMETHOD }}
+                        <br>
+                        <b>Main Feature:
+                        </b>{{ job.config.MAINFEATURE }} <br>
+                        <b>Min Length:
+                        </b>{{ job.config.MINLENGTH }}<br>
+                        <b>Max Length:
+                        </b>{{ job.config.MAXLENGTH }}<br>
+                        {% if job.video_type != "Music" %}
+                            <a href="changeparams?config_id={{ job.job_id }}"
+                               class="btn btn-primary">Change
+                                Settings</a>
+                        {% endif %}
+                    </div>
+                    <div class="card-body px-1 py-1">
+                        {% if job.video_type != "Music" %}
+                            <a href="customTitle?job_id={{ job.job_id }}"
+                               class="btn btn-primary">Custom Title</a>
+                        {% endif %}
+                        <br>
+                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal" data-type="abandon" data-jobid="{{ job.job_id }}" data-href="/json?job={{ job.job_id }}&mode=abandon">Abandon Job</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+{% endfor %}

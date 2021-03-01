@@ -711,6 +711,46 @@ def home():
                            ramdump=str(temps))
 
 
+@app.route('/joblist')
+def joblist():
+    # app.logger.info('Processing default request')
+    # app.logger.debug('DEBUGGING')
+    # app.logger.error('ERROR Inside /logreader')
+
+    if os.path.isfile(cfg['DBFILE']):
+        # jobs = Job.query.filter_by(status="active")
+        try:
+            jobs = db.session.query(Job).filter(Job.status.notin_(['fail', 'success'])).all()
+        except Exception:
+            # db isnt setup
+            return redirect(url_for('setup'))
+        for job in jobs:
+            job_log = cfg['LOGPATH'] + job.logfile
+            # Try to catch if the logfile gets delete before the job is finished
+            try:
+                line = subprocess.check_output(['tail', '-n', '1', job_log])
+            except subprocess.CalledProcessError:
+                app.logger.debug("Error while reading logfile for ETA")
+                line = ""
+            # job_status = re.search("([0-9]{1,2}\.[0-9]{2}) %.*ETA ([0-9]{2})h([0-9]{2})m([0-9]{2})s", str(line))
+            # ([0-9]{1,3}\.[0-9]{2}) %.*(?!ETA) ([0-9hms]*?)\)  # This is more dumb but it returns with the h m s
+            # job_status = re.search(r"([0-9]{1,2}\.[0-9]{2}) %.*ETA\s([0-9hms]*?)\)", str(line))
+            # This correctly get the very last ETA and %
+            job_status = re.search(r"([0-9]{1,3}\.[0-9]{2}) %.{0,40}ETA ([0-9hms]*?)\)(?!\\rEncod)", str(line))
+            if job_status:
+                job.progress = job_status.group(1)
+                # job.eta = job_status.group(2)+":"+job_status.group(3)+":"+job_status.group(4)
+                job.eta = job_status.group(2)
+                app.logger.debug("job.progress = " + str(job.progress))
+                x = job.progress
+                job.progress_round = int(float(x))
+                app.logger.debug("Job.round = " + str(job.progress_round))
+    else:
+        jobs = {}
+
+    return render_template('joblist.html', jobs=jobs)
+
+
 @app.route('/import_movies')
 @login_required
 def import_movies():
