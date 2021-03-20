@@ -58,7 +58,7 @@ def apprise_notify(apprise_cfg, title, body):
     """
     yaml_file = apprise_cfg
     with open(yaml_file, "r") as f:
-        cfg = yaml.load(f)
+        cfg = yaml.safe_load(f)
 
     apobj = apprise.Apprise()
     # boxcar
