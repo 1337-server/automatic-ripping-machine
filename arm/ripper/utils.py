@@ -310,28 +310,6 @@ def sleep_check_process(process_str, transcode_limit):
         logging.info("Transcode limit is disabled")
 
 
-def move(source, destination, remove_empty=False):
-    """Move files
-    source = path to source file
-    destination = path to destination file
-    remove_empty = True/False"""
-
-    if os.path.exists(source):
-        logging.error("source does not exist")
-        return
-
-    if os.path.isdir(source):  # source is directory
-        logging.info("source is directory")
-        if source[-1] != os.path.sep:
-            source += os.path.sep
-
-    elif os.path.isfile(source):  # source is file
-        logging.info("source is file")
-    else:
-        logging.error("source is an unknown file type")
-        return
-
-
 def move_files(basepath, filename, job, ismainfeature=False):
     """Move files into final media directory\n
     basepath = path to source directory\n
