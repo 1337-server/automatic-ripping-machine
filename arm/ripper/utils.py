@@ -310,6 +310,28 @@ def sleep_check_process(process_str, transcode_limit):
         logging.info("Transcode limit is disabled")
 
 
+def move(source, destination, remove_empty=False):
+    """Move files
+    source = path to source file
+    destination = path to destination file
+    remove_empty = True/False"""
+
+    if os.path.exists(source):
+        logging.error("source does not exist")
+        return
+
+    if os.path.isdir(source):  # source is directory
+        logging.info("source is directory")
+        if source[-1] != os.path.sep:
+            source += os.path.sep
+
+    elif os.path.isfile(source):  # source is file
+        logging.info("source is file")
+    else:
+        logging.error("source is an unknown file type")
+        return
+
+
 def move_files(basepath, filename, job, ismainfeature=False):
     """Move files into final media directory\n
     basepath = path to source directory\n
@@ -317,6 +339,13 @@ def move_files(basepath, filename, job, ismainfeature=False):
     job = instance of Job class\n
     ismainfeature = True/False"""
     logging.debug("Moving files: " + str(job.pretty_table()))
+
+    if job.video_type == "movie":
+        typeSubFolder = "movies"
+    elif job.video_type == "series":
+        typeSubFolder = "tv"
+    else:
+        typeSubFolder = "unidentified"
 
     if job.title_manual:
         # logging.info("Found new title: " + job.new_title + " (" + str(job.new_year) + ")")
@@ -330,7 +359,7 @@ def move_files(basepath, filename, job, ismainfeature=False):
     logging.debug(f"Arguments: {basepath} : {filename} : {hasnicetitle} : {videotitle} : {ismainfeature}")
 
     if hasnicetitle:
-        m_path = os.path.join(cfg["MEDIA_DIR"] + videotitle)
+        m_path = os.path.join(cfg["COMPLETED_PATH"], str(typeSubFolder), videotitle)
 
         if not os.path.exists(m_path):
             logging.info("Creating base title directory: " + m_path)
@@ -379,10 +408,18 @@ def rename_files(oldpath, job):
     """
     # Check if the job has a nice title after rip is complete, if so use the media dir not the arm
     # This is for media that was recognised after the wait period/disk started ripping
-    if job.hasnicetitle:
-        newpath = os.path.join(cfg["MEDIA_DIR"], job.title + " (" + str(job.year) + ")")
+
+    if job.video_type == "movie":
+        typeSubFolder = "movies"
+    elif job.video_type == "series":
+        typeSubFolder = "tv"
     else:
-        newpath = os.path.join(cfg["ARMPATH"], job.title + " (" + str(job.year) + ")")
+        typeSubFolder = "unidentified"
+
+    # if job.hasnicetitle:
+    newpath = os.path.join(cfg["COMPLETED_PATH"], str(typeSubFolder), job.title + " (" + str(job.year) + ")")
+    # else:
+    #    newpath = os.path.join(cfg["COMPLETED_PATH"], job.title + " (" + str(job.year) + ")")
 
     logging.debug("oldpath: " + oldpath + " newpath: " + newpath)
     logging.info("Changing directory name from " + oldpath + " to " + newpath)
@@ -691,15 +728,15 @@ def arm_setup():
     None
     """
     try:
-        # Make the ARM dir if it doesnt exist
-        if not os.path.exists(cfg['ARMPATH']):
-            os.makedirs(cfg['ARMPATH'])
-        # Make the RAW dir if it doesnt exist
-        if not os.path.exists(cfg['RAWPATH']):
-            os.makedirs(cfg['RAWPATH'])
-        # Make the Media dir if it doesnt exist
-        if not os.path.exists(cfg['MEDIA_DIR']):
-            os.makedirs(cfg['MEDIA_DIR'])
+        # Make the Raw dir if it doesnt exist
+        if not os.path.exists(cfg['RAW_PATH']):
+            os.makedirs(cfg['RAW_PATH'])
+        # Make the Transcode dir if it doesnt exist
+        if not os.path.exists(cfg['TRANSCODE_PATH']):
+            os.makedirs(cfg['TRANSCODE_PATH'])
+        # Make the Complete dir if it doesnt exist
+        if not os.path.exists(cfg['COMPLETED_PATH']):
+            os.makedirs(cfg['COMPLETED_PATH'])
         # Make the log dir if it doesnt exist
         if not os.path.exists(cfg['LOGPATH']):
             os.makedirs(cfg['LOGPATH'])
