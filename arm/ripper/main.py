@@ -347,11 +347,22 @@ def main(logfile, job):
 
         # move to media directory
         tracks = job.tracks.filter_by(ripped=True)
+        main_feature = job.tracks.filter_by(main_feature=True).first()
 
+        def main_feature_test(m, t):
+            if not t.main_feature:
+                logging.debug("track main is false - checking size")
+                if m.length == t.length:
+                    logging.debug("track is same size as main feature")
+                    return True
+                else:
+                    return False
+            else:
+                return t.main_feature
         if job.video_type == "movie":
             for track in tracks:
                 logging.info(f"Moving Movie {track.filename} to {final_directory}")
-                utils.move_files(hb_out_path, track.filename, job, track.main_feature)
+                utils.move_files(hb_out_path, track.filename, job, main_feature_test(main_feature, track))
         # move to media directory
         elif job.video_type == "series":
             for track in tracks:
