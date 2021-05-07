@@ -181,10 +181,11 @@ def get_cd_art(job, infos):
         logging.error("get_cd_art ERROR: " + str(exc))
     try:
         # This uses roboBrowser to grab the amazon/3rd party image if it exists
-        browser = RoboBrowser(user_agent='a python robot')
+        browser = RoboBrowser(user_agent='ARM-v2_devel')
         browser.open('https://musicbrainz.org/release/' + job.crc_id)
         img = browser.select('.cover-art img')
         # [<img src="https://images-eu.ssl-images-amazon.com/images/I/41SN9FK5ATL.jpg"/>]
+        # img[0].text
         args = {
             'poster_url': str(re.search(r'<img src="(.*)"', str(img)).group(1)),
             'poster_url_auto': str(re.search(r'<img src="(.*)"', str(img)).group(1)),
@@ -203,7 +204,6 @@ def get_cd_art(job, infos):
 
 if __name__ == "__main__":
     # this will break our logging if it ever triggers for arm
-    # logging.basicConfig(level=logging.DEBUG)
     disc = Disc("/dev/cdrom")
     myid = get_disc_id(disc)
     logging.debug("DiscID: %s (%s)", str(myid), myid.freedb_id)

@@ -17,7 +17,7 @@ def setup_logging(job):
     # This isn't catching all of them
     if job.label == "" or job.label is None:
         if job.disctype == "music":
-            logfile = job.logfile = job.identify_audio_cd(job)
+            logfile = job.logfile = job.identify_audio_cd()
         else:
             logfile = "empty.log"
         # set a logfull for empty.log and music_cd.log
