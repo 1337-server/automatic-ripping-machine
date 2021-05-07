@@ -85,7 +85,7 @@ class Job(db.Model):
             elif key == "ID_CDROM_MEDIA_TRACK_COUNT_AUDIO":
                 self.disctype = "music"
             else:
-                pass
+                self.disctype = "data"
 
     def get_pid(self):
         pid = os.getpid()
@@ -339,7 +339,7 @@ class User(db.Model, UserMixin):
         return self.user_id
 
 
-class Alembic_version(db.Model):
+class AlembicVersion(db.Model):
     version_num = db.Column(db.String(36), autoincrement=False, primary_key=True)
 
     def __init__(self, version=None):
