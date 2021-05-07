@@ -26,5 +26,5 @@ venv/*
 *.rar
 installed
 .idea/.name
-*/config.py
-*/arm_wrapper.sh
+*config.py
+*arm_wrapper.sh
