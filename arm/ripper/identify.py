@@ -33,7 +33,7 @@ def identify(job, logfile):
 
     os.system("mount " + job.devpath)
 
-    # Check with the job class to get the correct disctype
+    # Check with the job class to get the correct disc type
     job.get_disc_type(utils.find_file("HVDVD_TS", job.mountpoint))
 
     if job.disctype in ["dvd", "bluray"]:

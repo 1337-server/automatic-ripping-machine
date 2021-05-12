@@ -185,7 +185,7 @@ def get_cdrom_status(devpath):
     except OSError:
         # Sometimes ARM will log errors opening hard drives. this check should stop it
         if not bool(re.search(r'hd[a-j]|sd[a-j]', devpath)):
-            logging.info("Failed to open device " + devpath + " to check status.")
+            logging.info(f"Failed to open device {devpath} to check status.")
         exit(2)
     result = fcntl.ioctl(fd, 0x5326, 0)
 
@@ -443,7 +443,7 @@ def database_updater(args, job, wait_time=90):
     Try to update our db for x seconds and handle it nicely if we cant
 
     :param args: This needs to be a Dict with the key being the job.method you want to change and the value being
-    the new value.
+    the new value. If args isn't a dict assume we are wanting a rollback
 
     :param job: This is the job object
     :param wait_time: The time to wait in seconds
@@ -451,10 +451,12 @@ def database_updater(args, job, wait_time=90):
     """
     if type(args) is not dict:
         db.session.rollback()
-    # Loop through our args and try to set any of our job variables
-    for (key, value) in args.items():
-        setattr(job, key, value)
-        logging.debug(str(key) + "= " + str(value))
+        return False
+    else:
+        # Loop through our args and try to set any of our job variables
+        for (key, value) in args.items():
+            setattr(job, key, value)
+            logging.debug(f"{key}={value}")
     for i in range(wait_time):  # give up after the users wait period in seconds
         try:
             db.session.commit()
@@ -463,11 +465,44 @@ def database_updater(args, job, wait_time=90):
                 time.sleep(1)
                 logging.debug(f"database is locked - try {i}/{wait_time}")
             else:
-                logging.debug("Error: " + str(e))
+                logging.debug(f"Error: {e}")
                 raise RuntimeError(str(e))
         else:
             logging.debug("successfully written to the database")
             return True
+
+
+def database_adder(obj_class):
+    for i in range(90):  # give up after the users wait period in seconds
+        try:
+            logging.debug(f"Trying to add {type(obj_class).__name__}")
+            db.session.add(obj_class)
+            db.session.commit()
+        except Exception as e:
+            if "locked" in str(e):
+                time.sleep(1)
+                logging.debug(f"database is locked - try {i}/90")
+            else:
+                logging.error(f"Error: {e}")
+                raise RuntimeError(str(e))
+        else:
+            logging.debug(f"successfully written {type(obj_class).__name__} to the database")
+            return True
+
+
+def clean_old_jobs():
+    a_jobs = db.session.query(m.Job).filter(m.Job.status.notin_(['fail', 'success'])).all()
+    # Clean up abandoned jobs
+    for j in a_jobs:
+        if psutil.pid_exists(j.pid):
+            p = psutil.Process(j.pid)
+            if j.pid_hash == hash(p):
+                logging.info(f"Job #{j.job_id} with PID {j.pid} is currently running.")
+        else:
+            logging.info(f"Job #{j.job_id} with PID {j.pid} has been abandoned."
+                         f"Updating job status to fail.")
+            j.status = "fail"
+            db.session.commit()
 
 
 def job_dupe_check(job):

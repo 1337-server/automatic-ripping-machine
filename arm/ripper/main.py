@@ -241,22 +241,14 @@ def main(logfile, job):
 
     log_arm_params(job)
     check_fstab()
-
-    if cfg["HASHEDKEYS"]:
-        logging.info("Getting MakeMKV hashed keys for UHD rips")
-        grabkeys()
+    grabkeys(cfg["HASHEDKEYS"])
 
     # Entry point for dvd/bluray
     if job.disctype in ["dvd", "bluray"]:
         # get filesystem in order
         # If we have a nice title/confirmed name use the MEDIA_DIR and not the ARM unidentified folder
         # if job.hasnicetitle:
-        if job.video_type == "movie":
-            type_sub_folder = "movies"
-        elif job.video_type == "series":
-            type_sub_folder = "tv"
-        else:
-            type_sub_folder = "unidentified"
+        type_sub_folder = utils.convert_job_type(job.video_type)
 
         if job.year and job.year != "0000" and job.year != "":
             hb_out_path = os.path.join(cfg["TRANSCODE_PATH"], str(type_sub_folder),
@@ -401,6 +393,7 @@ def main(logfile, job):
                 logging.info(f"Transcoding completed with errors.  Title(s) {errlist} failed to complete. ")
             else:
                 utils.notify(job, NOTIFY_TITLE, str(job.title) + PROCESS_COMPLETE)
+
         logging.info("ARM processing complete")
 
     elif job.disctype == "music":
@@ -450,7 +443,7 @@ if __name__ == "__main__":
         logging.info("Drive appears to be empty or is not ready.  Exiting ARM.")
         sys.exit()
     # Dont put out anything if we are using the empty.log or NAS_
-    if logfile.find("empty.log") != -1 or logfile.find("/NAS_") != -1:
+    if logfile.find("empty.log") != -1 or re.search("NAS_[0-9].?log", logfile) is not None:
         sys.exit()
     # This will kill any runs that have been triggered twice on the same device
     running_jobs = db.session.query(Job).filter(Job.status.notin_(['fail', 'success']), Job.devpath == devpath).all()
@@ -458,22 +451,25 @@ if __name__ == "__main__":
         for j in running_jobs:
             print(j.start_time - datetime.datetime.now())
             z = int(round(abs(j.start_time - datetime.datetime.now()).total_seconds()) / 60)
-            if z < 1:
-                sys.exit(f"job already running on {devpath}")
+            if z <= 1:
+                logging.error(f"Job already running on {devpath}")
+                sys.exit(1)
 
     logging.info(f"Starting ARM processing at {datetime.datetime.now()}")
 
     utils.check_db_version(cfg['INSTALLPATH'], cfg['DBFILE'])
 
     # put in db
-    # TODO - Change utils.database_updated to allow adding of obj
     job.status = "active"
     job.start_time = datetime.datetime.now()
-    db.session.add(job)
-    db.session.commit()
+    utils.database_adder(job)
+    # db.session.add(job)
+    # db.session.commit()
+    time.sleep(1)
     config = Config(cfg, job_id=job.job_id)
-    db.session.add(config)
-    db.session.commit()
+    utils.database_adder(config)
+    # db.session.add(config)
+    # db.session.commit()
 
     # Log version number
     with open(os.path.join(cfg["INSTALLPATH"], 'VERSION')) as version_file:
@@ -484,20 +480,7 @@ if __name__ == "__main__":
     logging.info(f"User is: {getpass.getuser()}")
     logger.clean_up_logs(cfg["LOGPATH"], cfg["LOGLIFE"])
     logging.info(f"Job: {job.label}")
-    a_jobs = db.session.query(Job).filter(Job.status.notin_(['fail', 'success'])).all()
-
-    # Clean up abandoned jobs
-    for j in a_jobs:
-        if psutil.pid_exists(j.pid):
-            p = psutil.Process(j.pid)
-            if j.pid_hash == hash(p):
-                logging.info(f"Job #{j.job_id} with PID {j.pid} is currently running.")
-        else:
-            logging.info(f"Job #{j.job_id} with PID {j.pid} has been abandoned."
-                         f"Updating job status to fail.")
-            j.status = "fail"
-            db.session.commit()
-
+    utils.clean_old_jobs()
     log_udev_params()
 
     try:
