@@ -5,8 +5,7 @@ import musicbrainzngs as mb
 from discid import read, Disc
 
 from arm.config.config import cfg
-import arm.ripper.utils as u  # import database_updater
-# from arm.ui import app, db  # noqa E402
+import arm.ripper.utils as u
 import werkzeug
 werkzeug.cached_property = werkzeug.utils.cached_property
 from robobrowser import RoboBrowser  # noqa E402

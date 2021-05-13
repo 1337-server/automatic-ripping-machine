@@ -419,13 +419,10 @@ if __name__ == "__main__":
     job.status = "active"
     job.start_time = datetime.datetime.now()
     utils.database_adder(job)
-    # db.session.add(job)
-    # db.session.commit()
+
     time.sleep(1)
     config = Config(cfg, job_id=job.job_id)
     utils.database_adder(config)
-    # db.session.add(config)
-    # db.session.commit()
 
     # Log version number
     with open(os.path.join(cfg["INSTALLPATH"], 'VERSION')) as version_file:
