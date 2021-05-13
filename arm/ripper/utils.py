@@ -19,6 +19,8 @@ from arm.ui import app, db
 # from arm.models.models import Track, Job
 import arm.models.models as m
 
+NOTIFY_TITLE = "ARM notification"
+
 
 def notify(job, title, body):
     """Send notifications
@@ -44,6 +46,23 @@ def notify(job, title, body):
             logging.debug("apprise-config: " + str(cfg["APPRISE"]))
         except Exception as e:  # noqa: E722
             logging.error("Failed sending apprise notifications. " + str(e))
+
+
+def notify_entry(job):
+    # Notify On Entry
+    if job.disctype in ["dvd", "bluray"]:
+        # Send the notifications
+        notify(job, NOTIFY_TITLE,
+               f"Found disc: {job.title}. Disc type is {job.disctype}. Main Feature is {cfg['MAINFEATURE']}"
+               f".  Edit entry here: http://{check_ip()}:"
+               f"{cfg['WEBSERVER_PORT']}/jobdetail?job_id={job.job_id}")
+    elif job.disctype == "music":
+        notify(job, NOTIFY_TITLE, f"Found music CD: {job.label}. Ripping all tracks")
+    elif job.disctype == "data":
+        notify(job, NOTIFY_TITLE, "Found data disc.  Copying data.")
+    else:
+        notify(job, NOTIFY_TITLE, "Could not identify disc.  Exiting.")
+        sys.exit()
 
 
 def scan_emby(job):
@@ -547,6 +566,35 @@ def job_dupe_check(job):
 
     logging.debug("we have no previous rips/jobs matching this crc64")
     return False, None
+
+
+def check_ip():
+    """
+        Check if user has set an ip in the config file
+        if not gets the most likely ip
+        arguments:
+        none
+        return: the ip of the host or 127.0.0.1
+    """
+    host = cfg['WEBSERVER_IP']
+    if host == 'x.x.x.x':
+        # autodetect host IP address
+        from netifaces import interfaces, ifaddresses, AF_INET
+        ip_list = []
+        for interface in interfaces():
+            inet_links = ifaddresses(interface).get(AF_INET, [])
+            for link in inet_links:
+                ip = link['addr']
+                # print(str(ip))
+                if ip != '127.0.0.1' and not (ip.startswith('172')):
+                    ip_list.append(ip)
+                    # print(str(ip))
+        if len(ip_list) > 0:
+            return ip_list[0]
+        else:
+            return '127.0.0.1'
+    else:
+        return host
 
 
 def apprise_notify(apprise_cfg, title, body):

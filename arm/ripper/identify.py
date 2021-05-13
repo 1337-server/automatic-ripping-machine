@@ -212,7 +212,6 @@ def get_video_details(job):
 
         # try submitting without the year
         if response is None:
-            # year needs to be changed
             logging.debug("Removing year...")
             response = metadata_selector(job, title)
             logging.debug(f"response: {response}")

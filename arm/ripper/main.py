@@ -83,35 +83,6 @@ def check_fstab():
     logging.error("No fstab entry found.  ARM will likely fail.")
 
 
-def check_ip():
-    """
-        Check if user has set an ip in the config file
-        if not gets the most likely ip
-        arguments:
-        none
-        return: the ip of the host or 127.0.0.1
-    """
-    host = cfg['WEBSERVER_IP']
-    if host == 'x.x.x.x':
-        # autodetect host IP address
-        from netifaces import interfaces, ifaddresses, AF_INET
-        ip_list = []
-        for interface in interfaces():
-            inet_links = ifaddresses(interface).get(AF_INET, [])
-            for link in inet_links:
-                ip = link['addr']
-                # print(str(ip))
-                if ip != '127.0.0.1' and not (ip.startswith('172')):
-                    ip_list.append(ip)
-                    # print(str(ip))
-        if len(ip_list) > 0:
-            return ip_list[0]
-        else:
-            return '127.0.0.1'
-    else:
-        return host
-
-
 def skip_transcode(job, hb_out_path, hb_in_path, mkv_out_path, type_sub_folder):
     """
     For when skipping transcode in enabled
@@ -170,8 +141,8 @@ def skip_transcode(job, hb_out_path, hb_in_path, mkv_out_path, type_sub_folder):
 
         for f in files:
             mkvoutfile = os.path.join(mkv_out_path, f)
-            logging.debug(f"Moving file: {mkvoutfile} to: {mkv_out_path} {f}")
-            shutil.move(mkvoutfile, hb_out_path)
+            logging.debug(f"Moving file: {mkvoutfile} to: {hb_out_path} {f}")
+            utils.move_files(mkv_out_path, f, job, False)
     # remove raw files, if specified in config
     if cfg["DELRAWFILES"]:
         logging.info("Removing raw files")
@@ -191,29 +162,15 @@ def skip_transcode(job, hb_out_path, hb_in_path, mkv_out_path, type_sub_folder):
 
 
 def main(logfile, job):
-    """main dvd processing function"""
+    """main disc processing function"""
     logging.info("Starting Disc identification")
 
     identify.identify(job, logfile)
     # Check db for entries matching the crc and successful
     have_dupes, crc_jobs = utils.job_dupe_check(job)
 
-    # DVD disk entry
-    if job.disctype in ["dvd", "bluray"]:
-        # Send the notifications
-        utils.notify(job, NOTIFY_TITLE,
-                     f"Found disc: {job.title}. Disc type is {job.disctype}. Main Feature is {cfg['MAINFEATURE']}"
-                     f".  Edit entry here: http://{check_ip()}:"
-                     f"{cfg['WEBSERVER_PORT']}/jobdetail?job_id={job.job_id}")
-    elif job.disctype == "music":
-        utils.notify(job, NOTIFY_TITLE, f"Found music CD: {job.label}. Ripping all tracks")
-    elif job.disctype == "data":
-        utils.notify(job, NOTIFY_TITLE, "Found data disc.  Copying data.")
-    else:
-        utils.notify(job, NOTIFY_TITLE, "Could not identify disc.  Exiting.")
-        sys.exit()
+    utils.notify_entry(job)
 
-    # TODO: Update function that will look for the best match with most data
     #  If we have have waiting for user input enabled
     if cfg["MANUAL_WAIT"]:
         logging.info(f"Waiting {cfg['MANUAL_WAIT_TIME']} seconds for manual override.")
@@ -436,7 +393,6 @@ if __name__ == "__main__":
     utils.arm_setup()
     args = entry()
     devpath = "/dev/" + args.devpath
-    # print(devpath)
     job = Job(devpath)
     logfile = logger.setup_logging(job)
     if utils.get_cdrom_status(devpath) != 4:
