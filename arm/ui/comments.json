@@ -77,7 +77,7 @@
     "IFTTT_EVENT": "# IFTTT Event Name",
     "PO_USER_KEY": "# Pushover API User and Application Key\n# Leave User key empty to disable Pushover notifications",
     "PO_APP_KEY": "",
-    "OMDB_API_KEY": "# OMDB_API_KEY\n# omdbapi.com API Key\n# See README-OMDBAPI for background and info\n# This is the API key for omdbapi.com queries.\n# More info at http://omdbapi.com/",
+    "OMDB_API_KEY": "# OMDB_API_KEY\n# omdbapi.com API Key\n# See README-OMDBAPI for background and info\n# This is the API key for omdbapi.com queries.\n# More info at https://omdbapi.com/",
     "TMDB_API_KEY": "# TMDB_API_KEY\n# https://www.themoviedb.org/ API Key\n# See README-OMDBAPI for background and info\n# This is the API key for https://www.themoviedb.org/ queries.\n# More info at https://www.themoviedb.org/documentation/api",
     "JSON_URL": "# JSON_URL\n# Url to send Notifications to in JSON format",
     "APPRISE": "# File location of your apprise.yaml file"
