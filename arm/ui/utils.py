@@ -173,16 +173,16 @@ def call_omdb_api(title=None, year=None, imdb_id=None, plot="short"):
     omdb_api_key = cfg['OMDB_API_KEY']
 
     if imdb_id:
-        strurl = "https://www.omdbapi.com/?i={1}&plot={2}&r=json&apikey={0}".format(omdb_api_key, imdb_id, plot)
+        strurl = "http://www.omdbapi.com/?i={1}&plot={2}&r=json&apikey={0}".format(omdb_api_key, imdb_id, plot)
     elif title:
         # try:
         title = urllib.parse.quote(title)
         if year and year is not None:
             year = urllib.parse.quote(year)
-            strurl = "https://www.omdbapi.com/?s={1}&y={2}&plot={3}&r=json&apikey={0}".format(omdb_api_key,
+            strurl = "http://www.omdbapi.com/?s={1}&y={2}&plot={3}&r=json&apikey={0}".format(omdb_api_key,
                                                                                              title, year, plot)
         else:
-            strurl = "https://www.omdbapi.com/?s={1}&plot={2}&r=json&apikey={0}".format(omdb_api_key,
+            strurl = "http://www.omdbapi.com/?s={1}&plot={2}&r=json&apikey={0}".format(omdb_api_key,
                                                                                        title, plot)
     else:
         app.logger.debug("no params")
