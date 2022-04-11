@@ -165,7 +165,6 @@ def main(logfile, job):
 
     log_arm_params(job)
     check_fstab()
-    grabkeys(cfg["HASHEDKEYS"])
 
     # Entry point for dvd/bluray
     if job.disctype in ["dvd", "bluray"]:
