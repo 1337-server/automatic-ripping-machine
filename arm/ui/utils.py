@@ -10,12 +10,13 @@ import subprocess
 
 from time import strftime, localtime, time, sleep
 
+import bcrypt
 from werkzeug.routing import ValidationError
 import yaml
 from flask.logging import default_handler  # noqa: F401
 from arm.config.config import cfg
 from arm.ui import app, db
-from arm.models.models import Job, User, AlembicVersion, UISettings  # noqa: F401
+from arm.models.models import Job, User, AlembicVersion, UISettings
 from arm.ui.metadata import tmdb_search, get_tmdb_poster, tmdb_find, call_omdb_api
 
 
@@ -151,7 +152,7 @@ def get_info(directory):
 
 def clean_for_filename(string):
     """ Cleans up string for use in filename """
-    string = re.sub(r"\[.*?]", "", string)
+    string = re.sub(r"\[[^]]*]", "", string)
     string = re.sub('\\s+', ' ', string)
     string = string.replace(' : ', ' - ')
     string = string.replace(':', '-')
@@ -238,21 +239,26 @@ def setup_database():
         try:
             db.drop_all()
         except Exception:
-            app.logger.debug("couldn't drop all")
+            app.logger.debug("Couldn't drop all")
         try:
             #  Recreate everything
             db.metadata.create_all(db.engine)
             db.create_all()
             db.session.commit()
             #  push the database version arm is looking for
-            user = AlembicVersion('c54d68996895')
+            version = AlembicVersion('c54d68996895')
             ui_config = UISettings(1, 1, "spacelab", "en", 10, 200)
+            # Create default user to save problems with ui and ripper having diff setups
+            hashed = bcrypt.gensalt(12)
+            default_user = User(email="admin", password=bcrypt.hashpw("password".encode('utf-8'), hashed),
+                                hashed=hashed)
             db.session.add(ui_config)
-            db.session.add(user)
+            db.session.add(version)
+            db.session.add(default_user)
             db.session.commit()
             return True
         except Exception:
-            app.logger.debug("couldn't create all")
+            app.logger.debug("Couldn't create all")
             return False
 
 
@@ -329,7 +335,7 @@ def fix_permissions(j_id):
     ARM can sometimes have issues with changing the file owner, we can use the fact ARMui is run
     as a service to fix permissions.
     """
-    # TODO add new json exception - break these check out into a function
+    # TODO add new json exception - break these checks out into a function
     try:
         job_id = int(j_id.strip())
     except ValueError:
@@ -341,7 +347,7 @@ def fix_permissions(j_id):
     if not os.path.isfile(job_log):
         raise FileNotFoundError("Logfile Has Been Deleted Or Moved")
 
-    # This is kind of hacky way to get around the fact we dont save the ts variable
+    # This is kind of hacky way to get around the fact we don't save the ts variable
     with open(job_log, 'r') as reader:
         for line in reader.readlines():
             failed_perms_found = re.search("Operation not permitted: '([0-9a-zA-Z()/ -]*?)'", str(line))

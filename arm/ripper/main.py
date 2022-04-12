@@ -156,7 +156,7 @@ def skip_transcode_movie(files, job, mkv_out_path):
 def main(logfile, job):
     """main disc processing function"""
     logging.info("Starting Disc identification")
-    identify.identify(job, logfile)
+    identify.identify(job)
     # Check db for entries matching the crc and successful
     have_dupes, crc_jobs = utils.job_dupe_check(job)
     logging.debug(f"Value of have_dupes: {have_dupes}")
@@ -243,26 +243,20 @@ def main(logfile, job):
             for track in tracks:
                 utils.move_files(hb_out_path, track.filename, job, False)
         else:
-            # TODO check if mkv was used and correct/disable the extras
             for track in tracks:
                 if tracks.count() == 1:
                     utils.move_files(hb_out_path, track.filename, job, True)
                 else:
+                    if track.source == "MakeMKV":
+                        skip_transcode_movie(os.listdir(hb_out_path), job, hb_out_path)
+                        break
                     utils.move_files(hb_out_path, track.filename, job, track.main_feature)
-        # TODO extract this section and move it out of main
-        # move movie poster
-        src_poster = os.path.join(hb_out_path, "poster.png")
-        dst_poster = os.path.join(final_directory, "poster.png")
-        if os.path.isfile(src_poster):
-            if not os.path.isfile(dst_poster):
-                try:
-                    shutil.move(src_poster, dst_poster)
-                except Exception as poster_error:
-                    logging.error(f"Unable to move poster.png to '{final_directory}' - Error: {poster_error}")
-            else:
-                logging.info("File: poster.png already exists.  Not moving.")
 
+        # Movie the movie poster if we have one
+        utils.move_movie_poster(final_directory, hb_out_path)
+        # Scan emby if arm.yaml requires it
         utils.scan_emby()
+        # Set permissions if arm.yaml requires it
         utils.set_permissions(job, final_directory)
 
         # Clean up Blu-ray backup
@@ -331,10 +325,10 @@ if __name__ == "__main__":
     if logfile.find("empty.log") != -1 or re.search("NAS_[0-9].?log", logfile) is not None:
         sys.exit()
 
+    utils.check_db_version(cfg['INSTALLPATH'], cfg['DBFILE'])
     utils.duplicate_run_check(devpath)
 
     logging.info(f"Starting ARM processing at {datetime.datetime.now()}")
-    utils.check_db_version(cfg['INSTALLPATH'], cfg['DBFILE'])
 
     # put in db
     job.status = "active"

@@ -10,7 +10,7 @@ from pathlib import Path
 import psutil
 from arm.config.config import cfg
 from arm.ui import app, db
-from arm.models.models import Job, Config, Track  # noqa: F401
+from arm.models.models import Job, Config, Track
 from arm.ui.utils import job_id_validator
 
 
@@ -58,7 +58,7 @@ def process_logfile(logfile, job, job_results):
         :param logfile: the logfile for parsing
         :param job: the Job class
         :param job_results: the {} of
-        :return: r should be dict for the json api
+        :return: should be dict for the json api
     """
     app.logger.debug(job.status)
     if job.status == "ripping":
@@ -71,30 +71,30 @@ def process_logfile(logfile, job, job_results):
 
 
 def percentage(part, whole):
+    """percent calculator"""
     percent = 100 * float(part) / float(whole)
     return percent
 
 
 def process_makemkv_logfile(logfile, job, job_results):
     """
-    Process the logfile and find current status
+    Process the logfile and find current status\n
     :return: job_results dict
     """
     line = read_all_log_lines(logfile)
-    # TODO - 3 on the line below is the track number extract it and give 3/job.track count
     # PRGC:5057,3,"Analyzing seamless segments"
     # Correctly get last entry for progress bar
     for one_line in line:
         job_progress_status = re.search(r"PRGV:([\d]{3,}),([\d]+),([\d]{3,})$", str(one_line))
-        job_stage_index = re.search(r"PRGC:[\d]+,[\d]+,\"([\w -]{2,})\"$", str(one_line))
+        job_stage_index = re.search(r"PRGC:[\d]+,([\d]+),\"([\w -]{2,})\"$", str(one_line))
         if job_progress_status:
-            x = "{:.2f}".format(percentage(job_progress_status.group(1), job_progress_status.group(3)))
-            job.progress = job_results['progress'] = x
+            job_progress = f"{percentage(job_progress_status.group(1), job_progress_status.group(3)):.2f}"
+            job.progress = job_results['progress'] = job_progress
             job.progress_round = percentage(job_progress_status.group(1),
                                             job_progress_status.group(3))
         if job_stage_index:
             try:
-                current_index = job_stage_index.group(1)
+                current_index = f"{job_stage_index.group(2)} - {(int(job_stage_index.group(1)) + 1)}/{job.no_of_titles}"
                 job.stage = job_results['stage'] = current_index
             except Exception as error:
                 job.stage = f"Unknown -  {error}"
@@ -108,7 +108,7 @@ def process_handbrake_logfile(logfile, job, job_results):
     :param logfile: the logfile for parsing
     :param job: the Job class
     :param job_results: the {} of
-    :return: r should be dict for the json api
+    :return: should be dict for the json api
     """
     line = read_log_line(logfile)
     # This correctly get the very last ETA and %
@@ -144,7 +144,11 @@ def process_handbrake_logfile(logfile, job, job_results):
 
 
 def read_log_line(log_file):
-    # Try to catch if the logfile gets delete before the job is finished
+    """
+    Try to catch if the logfile gets delete before the job is finished\n
+    :param log_file:
+    :return:
+    """
     try:
         line = subprocess.check_output(['tail', '-n', '1', log_file])
     except subprocess.CalledProcessError:
@@ -154,7 +158,7 @@ def read_log_line(log_file):
 
 
 def read_all_log_lines(log_file):
-    # Try to catch if the logfile gets delete before the job is finished
+    """Try to catch if the logfile gets delete before the job is finished"""
     try:
         with open(log_file, encoding="utf8", errors='ignore') as read_log_file:
             line = read_log_file.readlines()
@@ -188,7 +192,7 @@ def search(search_query):
 
 def delete_job(job_id, mode):
     """
-    json api version of delete jobs
+    json api version of delete jobs\n
     :param job_id: job id to delete || str "all"/"title"
     :param str mode: should always be delete
     :return: json/dict to be returned if success or fail
@@ -202,7 +206,7 @@ def delete_job(job_id, mode):
             # Make a backup and everything
             # The user can only access this by typing it manually
             if job_id == 'all':
-                # TODO if this gets put in final the DB will need optimised
+                #  # if this gets put in final, the DB will need optimised
                 #  if os.path.isfile(cfg['DBFILE']):  # noqa: S125
                 #    # Make a backup of the database file
                 #    cmd = f"cp {cfg['DBFILE']} {cfg['DBFILE'])}.bak"
@@ -251,7 +255,7 @@ def delete_job(job_id, mode):
 
 def generate_log(logpath, job_id):
     """
-    Generate log for json api and return it in a valid form
+    Generate log for json api and return it in a valid form\n
     :param str logpath:
     :param int job_id:
     :return:
@@ -292,7 +296,7 @@ def generate_log(logpath, job_id):
 
 def abandon_job(job_id):
     """
-    json api abondon job
+    json api abondon job\n
     :param int job_id: the job id
     :return: json/dict
     """
@@ -313,10 +317,6 @@ def abandon_job(job_id):
         json_return['success'] = True
         app.logger.debug(f"Job {job_id} was abandoned successfully")
         job.eject()
-    except Exception as error:
-        db.session.rollback()
-        app.logger.debug(f"Job {job_id} couldn't be abandoned. ")
-        json_return["Error"] = str(error)
     except psutil.NoSuchProcess:
         db.session.rollback()
         json_return['Error'] = f"Couldn't find job.pid - {job.pid}! Reverting db changes."
@@ -325,5 +325,9 @@ def abandon_job(job_id):
         db.session.rollback()
         json_return['Error'] = f"Access denied abandoning job: {job.pid}! Reverting db changes."
         app.logger.debug(f"Access denied abandoning job: {job.pid}! Reverting db changes.")
+    except Exception as error:
+        db.session.rollback()
+        app.logger.debug(f"Job {job_id} couldn't be abandoned. ")
+        json_return["Error"] = str(error)
 
     return json_return
