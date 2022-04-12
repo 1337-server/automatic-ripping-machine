@@ -1,8 +1,0 @@
-#!/bin/bash
-
-(cd arm-dependencies || exit 1; git pull origin main)
-
-# shellcheck disable=SC2237
-if ! [[ -z $(git diff arm-dependencies) ]]; then
-	git commit -m "updated dependencies" -- arm-dependencies
-fi
