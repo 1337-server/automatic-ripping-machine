@@ -70,5 +70,4 @@ jobs:
       run: |
         cp docs/arm.yaml.sample arm.yaml
     - name: execute py script # run the run.py to get the latest data
-      run: |
-       python arm/runui.py
+      run: timeout 1 python ./runui.py || code=$?; if [[ $code -ne 124 && $code -ne 0 ]]; then exit $code; fi
