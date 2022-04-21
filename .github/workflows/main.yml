@@ -68,7 +68,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Fix config files
       run: |
-        cp ./arm/docs/arm.yaml.sample ./arm.yaml
+        cp docs/arm.yaml.sample arm.yaml
     - name: execute py script # run the run.py to get the latest data
       run: |
        python arm/runui.py
