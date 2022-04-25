@@ -1,17 +1,20 @@
 """
 Main catch all page for functions for the A.R.M ui
 """
+import hashlib
 import os
 import shutil
 import json
 import re
 import platform
 import subprocess
+from datetime import datetime
 from pathlib import Path
 
 from time import strftime, localtime, time, sleep
 
 import bcrypt
+import requests
 from werkzeug.routing import ValidationError
 import yaml
 from flask.logging import default_handler  # noqa: F401
@@ -176,7 +179,6 @@ def generate_comments():
     allows us to easily add more settings later
     :return: json
     """
-    comments = "{'error':'Unknown error'}"
     comments_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "comments.json")
     try:
         with open(comments_file, "r") as comments_read_file:
@@ -346,10 +348,12 @@ def fix_permissions(j_id):
     ARM can sometimes have issues with changing the file owner, we can use the fact ARMui is run
     as a service to fix permissions.
     """
+
     # Use set_media_owner to keep complexity low
     def set_media_owner(dirpath, cur_dir, uid, gid):
         if job.config.SET_MEDIA_OWNER:
             os.chown(os.path.join(dirpath, cur_dir), uid, gid)
+
     # Validate job is valid
     job_id_validator(j_id)
     job = models.Job.query.get(j_id)
@@ -400,6 +404,37 @@ def fix_permissions(j_id):
     return return_json
 
 
+def send_to_remote_db(job_id):
+    """
+    Send a local db job to the arm remote crc64 database
+    :param job_id: Job id
+    :return: dict/json to return to user
+    """
+    job = models.Job.query.get(job_id)
+    return_dict = {}
+    api_key = cfg['ARM_API_KEY']
+
+    # This allows easy updates to the API url
+    base_url = "https://1337server.pythonanywhere.com"
+    url = f"{base_url}/api/v1/?mode=p&api_key={api_key}&crc64={job.crc_id}&t={job.title}" \
+          f"&y={job.year}&imdb={job.imdb_id}" \
+          f"&hnt={job.hasnicetitle}&l={job.label}&vt={job.video_type}"
+    app.logger.debug(url.replace(api_key, "<api_key>"))
+    response = requests.get(url)
+    req = json.loads(response.text)
+    app.logger.debug("req= " + str(req))
+    job_dict = job.get_d().items()
+    return_dict['config'] = job.config.get_d()
+    for key, value in iter(job_dict):
+        return_dict[str(key)] = str(value)
+    if req['success']:
+        return_dict['status'] = "success"
+    else:
+        return_dict['error'] = req['Error']
+        return_dict['status'] = "fail"
+    return return_dict
+
+
 def find_folder_in_log(job_log, default_directory):
     """
     This is kind of hacky way to get around the fact we don't save the ts variable
@@ -437,8 +472,7 @@ def trigger_restart():
 
 def get_settings(arm_cfg_file):
     """
-    yaml file loader - is used for loading fresh arm.yaml config
-
+    yaml file loader - is used for loading fresh arm.yaml config\n
     :param arm_cfg_file: full path to arm.yaml
     :return: the loaded yaml file
     """
@@ -453,6 +487,84 @@ def get_settings(arm_cfg_file):
         app.logger.debug(error)
         yaml_cfg = {}
     return yaml_cfg
+
+
+def build_arm_cfg(form_data, comments):
+    """
+    Main function for saving new updated arm.yaml\n
+    :param form_data: post data
+    :param comments: comments file loaded as dict
+    :return: full new arm.yaml as a String
+    """
+    arm_cfg = comments['ARM_CFG_GROUPS']['BEGIN'] + "\n\n"
+    # TODO: This is not the safest way to do things.
+    #  It assumes the user isn't trying to mess with us.
+    # This really should be hard coded.
+    app.logger.debug("save_settings: START")
+    for key, value in form_data.items():
+        app.logger.debug(f"save_settings: current key {key} = {value} ")
+        if key == "csrf_token":
+            continue
+        # Add any grouping comments
+        arm_cfg += arm_yaml_check_groups(comments, key)
+        # Check for comments for this key in comments.json, add them if they exist
+        try:
+            arm_cfg += "\n" + comments[str(key)] + "\n" if comments[str(key)] != "" else ""
+        except KeyError:
+            arm_cfg += "\n"
+        # test if key value is an int
+        try:
+            post_value = int(value)
+            arm_cfg += f"{key}: {post_value}\n"
+        except ValueError:
+            # Test if value is Boolean
+            arm_cfg += arm_yaml_test_bool(key, value)
+    app.logger.debug("save_settings: FINISH")
+    return arm_cfg
+
+
+def arm_yaml_test_bool(key, value):
+    """
+    we need to test if the key is a bool, as we need to lower() it for yaml\n\n
+    or check if key is the webserver ip. \nIf not we need to wrap the value with quotes\n
+    :param key: the current key
+    :param value: the current value
+    :return: the new updated arm.yaml config with new key: values
+    """
+    if value.lower() == 'false' or value.lower() == "true":
+        arm_cfg = f"{key}: {value.lower()}\n"
+    else:
+        # If we got here, the only key that doesn't need quotes is the webserver key
+        # everything else needs "" around the value
+        if key == "WEBSERVER_IP":
+            arm_cfg = f"{key}: {value.lower()}\n"
+        else:
+            arm_cfg = f"{key}: \"{value}\"\n"
+    return arm_cfg
+
+
+def arm_yaml_check_groups(comments, key):
+    """
+    Check the current key to be added to arm.yaml and insert the group
+    separator comment, if the key matches\n
+    :param comments: comments dict, containing all comments from the arm.yaml
+    :param key: the current post key from form.args
+    :return: arm.yaml config with any new comments added
+    """
+    comment_groups = {'COMPLETED_PATH': "\n" + comments['ARM_CFG_GROUPS']['DIR_SETUP'],
+                      'WEBSERVER_IP': "\n" + comments['ARM_CFG_GROUPS']['WEB_SERVER'],
+                      'SET_MEDIA_PERMISSIONS': "\n" + comments['ARM_CFG_GROUPS']['FILE_PERMS'],
+                      'RIPMETHOD': "\n" + comments['ARM_CFG_GROUPS']['MAKE_MKV'],
+                      'HB_PRESET_DVD': "\n" + comments['ARM_CFG_GROUPS']['HANDBRAKE'],
+                      'EMBY_REFRESH': "\n" + comments['ARM_CFG_GROUPS']['EMBY']
+                                      + "\n" + comments['ARM_CFG_GROUPS']['EMBY_ADDITIONAL'],
+                      'NOTIFY_RIP': "\n" + comments['ARM_CFG_GROUPS']['NOTIFY_PERMS'],
+                      'APPRISE': "\n" + comments['ARM_CFG_GROUPS']['APPRISE']}
+    if key in comment_groups:
+        arm_cfg = comment_groups[key]
+    else:
+        arm_cfg = ""
+    return arm_cfg
 
 
 def get_processor_name():
@@ -518,3 +630,78 @@ def job_id_validator(job_id):
     except AttributeError:
         valid = False
     return valid
+
+
+def generate_file_list(my_path):
+    """
+    Generate a list of files from given path\n
+    :param my_path: path to folder
+    :return: list of files
+    """
+    movie_dirs = [f for f in os.listdir(my_path) if os.path.isdir(os.path.join(my_path, f)) and not f.startswith(".")
+                  and os.path.isdir(os.path.join(my_path, f))]
+    app.logger.debug(movie_dirs)
+    return movie_dirs
+
+
+def import_movie_add(poster_image, imdb_id, movie_group, my_path):
+    """
+    Search the movie directory, make sure we have movie files and then import it into the db\n
+    :param poster_image:
+    :param imdb_id:
+    :param movie_group:
+    :param my_path:
+    :return:
+    """
+    app.logger.debug(f"Poster image: {poster_image}, IMDB: {imdb_id}, "
+                     f"Movie_group: {movie_group.group(0)}, Path: {my_path}")
+    # only used to add a non-unique crc64
+    movie = movie_group.group(0)
+    # Fake crc64 number
+    hash_object = hashlib.md5(f"{movie}".strip().encode())
+    # Check if we already have this in the db exit if we do
+    dupe_found, not_used_variable = job_dupe_check(hash_object.hexdigest())
+    if dupe_found:
+        app.logger.debug("We found dupes breaking loop")
+        return None
+    app.logger.debug(f"List dir = {os.listdir(my_path)}")
+
+    # Build file list with common video extension types
+    movie_files = [f for f in os.listdir(my_path)
+                   if os.path.isfile(os.path.join(my_path, f))
+                   and f.endswith((".mkv", ".avi", ".mp4", ".avi"))]
+    app.logger.debug(f"movie files = {movie_files}")
+
+    # This dict will be returned to the big list, so we can display to the user
+    movie_dict = {
+        'title': movie_group.group(1),
+        'year': movie_group.group(2),
+        'crc_id': hash_object.hexdigest(),
+        'imdb_id': imdb_id,
+        'poster': poster_image,
+        'status': 'success' if len(movie_files) >= 1 else 'fail',
+        'video_type': 'movie',
+        'disctype': 'unknown',
+        'hasnicetitle': True,
+        'no_of_titles': len(movie_files)
+    }
+    app.logger.debug(movie_dict)
+    # Create the new job and use the found values
+    new_movie = models.Job("/dev/sr0")
+    new_movie.title = movie_dict['title']
+    new_movie.year = movie_dict['year']
+    new_movie.crc_id = hash_object.hexdigest()
+    new_movie.imdb_id = imdb_id
+    new_movie.status = movie_dict['status']
+    new_movie.video_type = movie_dict['video_type']
+    new_movie.disctype = movie_dict['disctype']
+    new_movie.hasnicetitle = movie_dict['hasnicetitle']
+    new_movie.no_of_titles = movie_dict['no_of_titles']
+    new_movie.poster_url = movie_dict['poster']
+    new_movie.start_time = datetime.now()
+    new_movie.logfile = "imported.log"
+    new_movie.ejected = True
+    new_movie.path = my_path
+    app.logger.debug(new_movie)
+    db.session.add(new_movie)
+    return movie_dict

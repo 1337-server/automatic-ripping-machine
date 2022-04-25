@@ -3,11 +3,9 @@
 import os
 import re
 import sys  # noqa: F401
-import hashlib
 import json
 from pathlib import Path, PurePath
 
-import requests
 import bcrypt
 import psutil
 from werkzeug.exceptions import HTTPException
@@ -161,44 +159,44 @@ def login():
     Login page if login is enabled
     :return: redirect
     """
-    # TODO fix this so there is only 1 return
+    return_redirect = None
     # if there is no user in the database
     try:
         user_list = models.User.query.all()
         # If we don't raise an exception but the usr table is empty
         if not user_list:
             app.logger.debug("No admin found")
-            return redirect(constants.SETUP_STAGE_2)
+            return_redirect = redirect(constants.SETUP_STAGE_2)
     except Exception:
         flash(constants.NO_ADMIN_ACCOUNT, "danger")
         app.logger.debug(constants.NO_ADMIN_ACCOUNT)
-        return redirect(constants.SETUP_STAGE_2)
+        return_redirect = redirect(constants.SETUP_STAGE_2)
 
     # if user is logged in
     if current_user.is_authenticated:
-        return redirect(constants.HOME_PAGE)
+        return_redirect = redirect(constants.HOME_PAGE)
 
     form = SetupForm()
     if form.validate_on_submit():
-        email = request.form['username']
-        # TODO: we know there is only ever 1 admin account, so we can pull it and check against it locally
-        user = models.User.query.filter_by(email=str(email).strip()).first()
-        if user is None:
-            flash('Invalid username', 'danger')
-            return render_template('login.html', form=form)
-        app.logger.debug("user= " + str(user))
+        login_username = request.form['username']
+        # we know there is only ever 1 admin account, so we can pull it and check against it locally
+        admin = models.User.query.filter_by().first()
+        app.logger.debug("user= " + str(admin))
         # our pass
-        password = user.password
-        hashed = user.hash
+        password = admin.password
         # hashed pass the user provided
-        loginhashed = bcrypt.hashpw(str(request.form['password']).strip().encode('utf-8'), hashed)
+        login_hashed = bcrypt.hashpw(str(request.form['password']).strip().encode('utf-8'), admin.hash)
 
-        if loginhashed == password:
-            login_user(user)
+        if login_hashed == password and login_username == admin.email:
+            login_user(admin)
             app.logger.debug("user was logged in - redirecting")
-            return redirect(constants.HOME_PAGE)
-        flash('Password is wrong', 'danger')
-    return render_template('login.html', form=form)
+            return_redirect = redirect(constants.HOME_PAGE)
+        else:
+            flash("Something isn't right", "danger")
+    # If nothing has gone wrong give them the login page
+    if return_redirect is None:
+        return_redirect = render_template('login.html', form=form)
+    return return_redirect
 
 
 @app.route('/database')
@@ -222,7 +220,7 @@ def database():
                            date_format=cfg['DATE_FORMAT'], pages=jobs)
 
 
-@app.route('/json', methods=['GET', 'POST'])
+@app.route('/json', methods=['GET'])
 @login_required
 def feed_json():
     """
@@ -233,34 +231,33 @@ def feed_json():
     You can then add a function inside utils to deal with the request
     """
     return_json = {}
-    mode = request.args.get('mode')
-    j_id = request.args.get('job')
-    searchq = request.args.get('q')
-    logpath = cfg['LOGPATH']
+    mode = str(request.args.get('mode'))
 
-    if mode == "delete":
-        return_json = json_api.delete_job(j_id, mode)
-    elif mode == "abandon":
-        return_json = json_api.abandon_job(j_id)
-    elif mode == "full":
-        app.logger.debug("getlog")
-        return_json = json_api.generate_log(logpath, j_id)
-    elif mode == "search":
-        app.logger.debug("search")
-        return_json = json_api.search(searchq)
-    elif mode == "getfailed":
-        app.logger.debug("getfailed")
-        return_json = json_api.get_x_jobs("fail")
-    elif mode == "getsuccessful":
-        app.logger.debug("getsucessful")
-        return_json = json_api.get_x_jobs("success")
-    elif mode == "joblist":
-        app.logger.debug("joblist")
-        return_json = json_api.get_x_jobs("joblist")
-    elif mode == "fixperms":
-        app.logger.debug("fixperms")
-        return_json = ui_utils.fix_permissions(j_id)
-    app.logger.debug(return_json)
+    valid_data = {
+        'j_id': request.args.get('job'),
+        'searchq': request.args.get('q'),
+        'logpath': cfg['LOGPATH'],
+        'fail': 'fail',
+        'success': 'success',
+        'joblist': 'joblist',
+        'mode': mode
+    }
+    valid_modes = {
+        'delete': {'funct': json_api.delete_job, 'args': ('j_id', 'mode')},
+        'abandon': {'funct': json_api.abandon_job, 'args': ('j_id',)},
+        'full': {'funct': json_api.generate_log, 'args': ('logpath', 'j_id')},
+        'search': {'funct': json_api.search, 'args': ('searchq',)},
+        'getfailed': {'funct': json_api.get_x_jobs, 'args': ('fail',)},
+        'getsuccessful': {'funct': json_api.get_x_jobs, 'args': ('success',)},
+        'fixperms': {'funct': ui_utils.fix_permissions, 'args': ('j_id',)},
+        'joblist': {'funct': json_api.get_x_jobs, 'args': ('joblist',)},
+        'send_item': {'funct': ui_utils.send_to_remote_db, 'args': ('j_id',)}
+    }
+    if mode in valid_modes:
+        args = [valid_data[x] for x in valid_modes[mode]['args']]
+        app.logger.debug(args)
+        return_json = valid_modes[mode]['funct'](*args)
+    app.logger.debug(f"Json - {return_json}")
     return app.response_class(response=json.dumps(return_json, indent=4, sort_keys=True),
                               status=200,
                               mimetype=constants.JSON_TYPE)
@@ -271,68 +268,28 @@ def feed_json():
 def settings():
     """
     The settings page - allows the user to update the arm.yaml without needing to open a text editor
-    Also triggers a restart of flask for debugging.
-
     This needs to be rewritten to be static
     """
-    form_data = ""
+    # Path to arm.yaml
     arm_cfg_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../..", "arm.yaml")
+    # Load up the comments.json, so we can comment the arm.yaml
     comments = ui_utils.generate_comments()
-    cfg = ui_utils.get_settings(arm_cfg_file)
-
+    # Get the current config, so we can show the current values with no post data
+    current_cfg = ui_utils.get_settings(arm_cfg_file)
     form = SettingsForm()
     if form.validate_on_submit():
-        # For testing
-        form_data = request.form.to_dict()
-        arm_cfg = comments['ARM_CFG_GROUPS']['BEGIN'] + "\n\n"
-        # TODO: This is not the safest way to do things.
-        #  It assumes the user isn't trying to mess with us.
-        # This really should be hard coded.
-        for key, value in form_data.items():
-            if key != "csrf_token":
-                if key == "COMPLETED_PATH":
-                    arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['DIR_SETUP']
-                elif key == "WEBSERVER_IP":
-                    arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['WEB_SERVER']
-                elif key == "SET_MEDIA_PERMISSIONS":
-                    arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['FILE_PERMS']
-                elif key == "RIPMETHOD":
-                    arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['MAKE_MKV']
-                elif key == "HB_PRESET_DVD":
-                    arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['HANDBRAKE']
-                elif key == "EMBY_REFRESH":
-                    arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['EMBY']
-                    arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['EMBY_ADDITIONAL']
-                elif key == "NOTIFY_RIP":
-                    arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['NOTIFY_PERMS']
-                elif key == "APPRISE":
-                    arm_cfg += "\n" + comments['ARM_CFG_GROUPS']['APPRISE']
-                try:
-                    arm_cfg += "\n" + comments[str(key)] + "\n" if comments[str(key)] != "" else ""
-                except KeyError:
-                    arm_cfg += "\n"
-                try:
-                    post_value = int(value)
-                    arm_cfg += f"{key}: {post_value}\n"
-                except ValueError:
-                    if value.lower() == 'false' or value.lower() == "true":
-                        arm_cfg += f"{key}: {value.lower()}\n"
-                    else:
-                        if key == "WEBSERVER_IP":
-                            arm_cfg += f"{key}: {value.lower()}\n"
-                        else:
-                            arm_cfg += f"{key}: \"{value}\"\n"
-                # app.logger.debug(f"\n{k} = {v} ")
-
-        # app.logger.debug(f"arm_cfg= {arm_cfg}")
+        # Build the new arm.yaml with updated values from the user
+        arm_cfg = ui_utils.build_arm_cfg(request.form.to_dict(), comments)
+        # Save updated arm.yaml
         with open(arm_cfg_file, "w") as settings_file:
             settings_file.write(arm_cfg)
             settings_file.close()
         flash("Setting saved successfully!", "success")
+        # Redirect so we show the new config values
         return redirect(url_for('settings'))
     # If we get to here there was no post data
-    return render_template('settings.html', settings=cfg,
-                           form=form, raw=form_data, jsoncomments=comments)
+    return render_template('settings.html', settings=current_cfg,
+                           form=form, raw=request.form.to_dict(), jsoncomments=comments)
 
 
 @app.route('/ui_settings', methods=['GET', 'POST'])
@@ -409,7 +366,7 @@ def logreader():
     log_path = cfg['LOGPATH']
     mode = request.args.get('mode')
     # We should use the job id and not get the raw logfile from the user
-    # TODO poss search database and see if we can match the logname with a previous rip ?
+    # Maybe search database and see if we can match the logname with a previous rip ?
     full_path = os.path.join(log_path, request.args.get('logfile'))
     ui_utils.validate_logfile(request.args.get('logfile'), mode, Path(full_path))
 
@@ -477,19 +434,19 @@ def jobdetail():
     return render_template('jobdetail.html', jobs=job, tracks=tracks, s=search_results)
 
 
-@app.route('/titlesearch', methods=['GET', 'POST'])
+@app.route('/titlesearch', methods=['GET'])
 @login_required
-def submitrip():
+def title_search():
     """
     The initial search page
     """
     job_id = request.args.get('job_id')
     job = models.Job.query.get(job_id)
-    form = TitleSearchForm(obj=job)
-    if form.validate_on_submit():
-        form.populate_obj(job)
-        flash(f'Search for {form.title.data}, year={form.year.data}', 'success')
-        return redirect(url_for('list_titles', title=form.title.data, year=form.year.data, job_id=job_id))
+    form = TitleSearchForm(request.args, meta={'csrf': False})
+    if form.validate():
+        flash(f'Search for {request.args.get("title")}, year={request.args.get("year")}', 'success')
+        return redirect(url_for('list_titles', title=request.args.get("title"),
+                                year=request.args.get("year"), job_id=job_id))
     return render_template('titlesearch.html', title='Update Title', form=form, job=job)
 
 
@@ -521,7 +478,7 @@ def changeparams():
     return render_template('changeparams.html', title='Change Parameters', form=form)
 
 
-@app.route('/customTitle', methods=['GET', 'POST'])
+@app.route('/customTitle', methods=['GET'])
 @login_required
 def customtitle():
     """
@@ -531,16 +488,13 @@ def customtitle():
     ui_utils.job_id_validator(job_id)
     job = models.Job.query.get(job_id)
     form = TitleSearchForm(obj=job)
-    if form.validate_on_submit():
-        form.populate_obj(job)
-        job.title = format(form.title.data)
-        job.year = format(form.year.data)
+    if request.args.get("title"):
         args = {
-            'title': job.disctype,
-            'year': job.year
+            'title': request.args.get("title"),
+            'year': request.args.get("year")
         }
         ui_utils.database_updater(args, job)
-        flash(f'custom title changed. Title={form.title.data}, Year={form.year.data}.', "success")
+        flash(f'Custom title changed. Title={job.title}, Year={job.year}.', "success")
         return redirect(url_for('home'))
     return render_template('customTitle.html', title='Change Title', form=form, job=job)
 
@@ -608,27 +562,19 @@ def updatetitle():
     """
     # updatetitle?title=Home&amp;year=2015&amp;imdbID=tt2224026&amp;type=movie&amp;
     #  poster=http://image.tmdb.org/t/p/original/usFenYnk6mr8C62dB1MoAfSWMGR.jpg&amp;job_id=109
-    new_title = request.args.get('title')
-    new_year = request.args.get('year')
-    video_type = request.args.get('type')
-    imdb_id = request.args.get('imdbID')
-    poster_url = request.args.get('poster')
     job_id = request.args.get('job_id')
-    app.logger.debug("New imdbID=" + str(imdb_id))
     job = models.Job.query.get(job_id)
-    job.title = ui_utils.clean_for_filename(new_title)
-    job.title_manual = ui_utils.clean_for_filename(new_title)
-    job.year = new_year
-    job.year_manual = new_year
-    job.video_type_manual = video_type
-    job.video_type = video_type
-    job.imdb_id_manual = imdb_id
-    job.imdb_id = imdb_id
-    job.poster_url_manual = poster_url
-    job.poster_url = poster_url
+    old_title = job.title
+    old_year = job.year
+    job.title = job.title_manual = ui_utils.clean_for_filename(request.args.get('title'))
+    job.year = job.year_manual = request.args.get('year')
+    job.video_type = job.video_type_manual = request.args.get('type')
+    job.imdb_id = job.imdb_id_manual = request.args.get('imdbID')
+    job.poster_url = job.poster_url_manual = request.args.get('poster')
     job.hasnicetitle = True
     db.session.commit()
-    flash(f'Title: {job.title_auto} ({job.year_auto}) was updated to {new_title} ({new_year})', "success")
+    flash(f'Title: {old_title} ({old_year}) was updated to '
+          f'{request.args.get("title")} ({request.args.get("year")})', "success")
     return redirect("/")
 
 
@@ -660,7 +606,6 @@ def home():
         flash("There was a problem accessing the ARM folders. Please make sure you have setup ARM<br/>"
               "Setup can be started by visiting <a href=\"/setup\">setup page</a> ARM will not work correctly until"
               "until you have added an admin account", "danger")
-    # We could check for the install file here  and then error out if we want
     #  RAM
     memory = psutil.virtual_memory()
     mem_total = round(memory.total / 1073741824, 1)
@@ -706,143 +651,69 @@ def home():
 @login_required
 def import_movies():
     """
-    Function for finding all movies not currently tracked by ARM in the MEDIA_DIR
+    Function for finding all movies not currently tracked by ARM in the COMPLETED_PATH
     This should not be run frequently
-    This causes a HUGE number of requests to OMdb
+    This causes a HUGE number of requests to OMdb\n
     :return: Outputs json - contains a dict/json of movies added and a notfound list
-             that doesnt match ARM identified folder format.
+             that doesn't match ARM identified folder format.
+    .. note:: This should eventually be moved to /json page load times are too long
     """
-    import time
-    from os import listdir
-    from os.path import isfile, join, isdir
-    time_0 = time.time()
-
     my_path = cfg['COMPLETED_PATH']
+    app.logger.debug(my_path)
     movies = {0: {'notfound': {}}}
-    dest_ext = cfg['DEST_EXT']
     i = 1
-    movie_dirs = [f for f in listdir(my_path) if isfile(join(my_path, f)) and not f.startswith(".")
-                  or isdir(join(my_path, f)) and not f.startswith(".")]
-
+    movie_dirs = ui_utils.generate_file_list(my_path)
     app.logger.debug(movie_dirs)
     if len(movie_dirs) < 1:
         app.logger.debug("movie_dirs found none")
 
     for movie in movie_dirs:
-        mystring = f"{movie}"
+        # will match 'Movie (0000)'
         regex = r"([\w\ \'\.\-\&\,]*?) \(([0-9]{2,4})\)"
+        # get our match
         matched = re.match(regex, movie)
+        # if we can match the standard arm output format "Movie (year)"
         if matched:
-            # This is only for pycharm
-            movie_name = str.replace(" ", "%20", matched.group(1).strip())  # movie
-
-            p1, imdb_id = get_omdb_poster(movie_name, matched.group(2))
-            # ['poster.jpg', 'title_t00.mkv', 'title_t00.xml', 'fanart.jpg',
-            #  'title_t00.nfo-orig', 'title_t00.nfo', 'title_t00.xml-orig', 'folder.jpg']
-            app.logger.debug(str(listdir(join(my_path, str(movie)))))
-            movie_files = [f for f in listdir(join(my_path, str(movie)))
-                           if isfile(join(my_path, str(movie), f)) and f.endswith("." + dest_ext)
-                           or isfile(join(my_path, str(movie), f)) and f.endswith(".mp4")
-                           or isfile(join(my_path, str(movie), f)) and f.endswith(".avi")]
-            app.logger.debug("movie files = " + str(movie_files))
-
-            hash_object = hashlib.md5(mystring.encode())
-            dupe_found, not_used_variable = ui_utils.job_dupe_check(hash_object.hexdigest())
-            if dupe_found:
-                app.logger.debug("We found dupes breaking loop")
-                continue
-
-            movies[i] = {
-                'title': matched.group(1),
-                'year': matched.group(2),
-                'crc_id': hash_object.hexdigest(),
-                'imdb_id': imdb_id,
-                'poster': p1,
-                'status': 'success' if len(movie_files) > 0 else 'fail',
-                'video_type': 'movie',
-                'disctype': 'unknown',
-                'hasnicetitle': True,
-                'no_of_titles': len(movie_files)
-            }
-
-            new_movie = models.Job("/dev/sr0")
-            new_movie.title = movies[i]['title']
-            new_movie.year = movies[i]['year']
-            new_movie.crc_id = hash_object.hexdigest()
-            new_movie.imdb_id = imdb_id
-            new_movie.poster_url = movies[i]['poster']
-            new_movie.status = movies[i]['status']
-            new_movie.video_type = movies[i]['video_type']
-            new_movie.disctype = movies[i]['disctype']
-            new_movie.hasnicetitle = movies[i]['hasnicetitle']
-            new_movie.no_of_titles = movies[i]['no_of_titles']
-            db.session.add(new_movie)
-            i += 1
+            poster_image, imdb_id = get_omdb_poster(matched.group(1), matched.group(2))
+            app.logger.debug(os.path.join(my_path, str(movie)))
+            app.logger.debug(str(os.listdir(os.path.join(my_path, str(movie)))))
+            movies[i] = ui_utils.import_movie_add(poster_image,
+                                                  imdb_id, matched,
+                                                  os.path.join(my_path, str(movie)))
         else:
-            sub_path = join(my_path, str(movie))
-            # go through each folder and treat it as a subfolder of movie folder
-            subfiles = [f for f in listdir(sub_path) if isfile(join(sub_path, f)) and not f.startswith(".")
-                        or isdir(join(sub_path, f)) and not f.startswith(".")]
+            # If we didn't get a match assume that the directory is a main directory for other folders
+            # This means we can check for "series" type movie folders e.g
+            # - Lord of the rings
+            #     - The Lord of the Rings The Fellowship of the Ring (2001)
+            #     - The Lord of the Rings The Two Towers (2002)
+            #     - The Lord of the Rings The Return of the King (2003)
+            #
+            sub_path = os.path.join(my_path, str(movie))
+            # Go through each folder and treat it as a sub-folder of movie folder
+            subfiles = ui_utils.generate_file_list(sub_path)
             for sub_movie in subfiles:
-                mystring = f"{sub_movie}"
                 sub_matched = re.match(regex, sub_movie)
                 if sub_matched:
-                    # This is only for pycharm
-                    sub_movie_name = str.replace(" ", "%20", sub_matched.group(1).strip())  # movie
-                    sub_movie_name = str.replace("&", "%26", sub_movie_name)
-                    p2, imdb_id = get_omdb_poster(sub_movie_name, sub_matched.group(2))
-                    app.logger.debug(listdir(join(sub_path, str(sub_movie))))
-                    # If the user selects another ext thats not mkv we are f
-                    sub_movie_files = [f for f in listdir(join(sub_path, str(sub_movie)))
-                                       if isfile(join(sub_path, str(sub_movie), f)) and f.endswith("." + dest_ext)
-                                       or isfile(join(sub_path, str(sub_movie), f)) and f.endswith(".mp4")
-                                       or isfile(join(my_path, str(movie), f)) and f.endswith(".avi")]
-                    app.logger.debug("movie files = " + str(sub_movie_files))
-                    hash_object = hashlib.md5(mystring.encode())
-                    dupe_found, not_used_variable = ui_utils.job_dupe_check(hash_object.hexdigest())
-                    if dupe_found:
-                        app.logger.debug("We found dupes breaking loop")
-                        continue
-                    movies[i] = {
-                        'title': sub_matched.group(1),
-                        'year': sub_matched.group(2),
-                        'crc_id': hash_object.hexdigest(),
-                        'imdb_id': imdb_id,
-                        'poster': p2,
-                        'status': 'success' if len(sub_movie_files) > 0 else 'fail',
-                        'video_type': 'movie',
-                        'disctype': 'unknown',
-                        'hasnicetitle': True,
-                        'no_of_titles': len(sub_movie_files)
-                    }
-                    new_movie = models.Job("/dev/sr0")
-                    new_movie.title = movies[i]['title']
-                    new_movie.year = movies[i]['year']
-                    new_movie.crc_id = hash_object.hexdigest()
-                    new_movie.imdb_id = imdb_id
-                    new_movie.poster_url = p2
-                    new_movie.status = movies[i]['status']
-                    new_movie.video_type = movies[i]['video_type']
-                    new_movie.disctype = movies[i]['disctype']
-                    new_movie.hasnicetitle = movies[i]['hasnicetitle']
-                    new_movie.no_of_titles = movies[i]['no_of_titles']
-                    db.session.add(new_movie)
-                    i += 1
+                    # Fix poster image and imdb_id
+                    poster_image, imdb_id = get_omdb_poster(sub_matched.group(1), sub_matched.group(2))
+                    app.logger.debug(os.listdir(os.path.join(sub_path, str(sub_movie))))
+                    # Add the movies to the main movie dict
+                    movies[i] = ui_utils.import_movie_add(poster_image,
+                                                          imdb_id, sub_matched,
+                                                          os.path.join(sub_path, str(sub_movie)))
                 else:
                     movies[0]['notfound'][str(i)] = str(sub_movie)
-            print(subfiles)
-    # app.logger.debug(movies)
-
-    time_1 = time.time()
-    total = round(time_1 - time_0, 3)
-    app.logger.debug(str(total) + " sec")
+            app.logger.debug(subfiles)
+        i += 1
+    app.logger.debug(movies)
     db.session.commit()
+    movies = {k: v for k, v in movies.items() if v}
     return app.response_class(response=json.dumps(movies, indent=4, sort_keys=True),
                               status=200,
                               mimetype=constants.JSON_TYPE)
 
 
-@app.route('/send_movies', methods=['GET', 'POST'])
+@app.route('/send_movies', methods=['GET'])
 @login_required
 def send_movies():
     """
@@ -852,43 +723,15 @@ def send_movies():
     if request.args.get('s') is None:
         return render_template('send_movies_form.html')
 
-    posts = db.session.query(models.Job).filter_by(hasnicetitle=True, disctype="dvd").all()
-    app.logger.debug("search - posts=" + str(posts))
-    r = {'failed': {}, 'sent': {}}
-    i = 0
-    api_key = cfg['ARM_API_KEY']
-
-    for p in posts:
-        # This allows easy updates to the API url
-        base_url = "https://1337server.pythonanywhere.com"
-        url = f"{base_url}/api/v1/?mode=p&api_key={api_key}&crc64={p.crc_id}&t={p.title}&y={p.year}&imdb={p.imdb_id}" \
-              f"&hnt={p.hasnicetitle}&l={p.label}&vt={p.video_type}"
-        app.logger.debug(url)
-        response = requests.get(url)
-        req = json.loads(response.text)
-        app.logger.debug("req= " + str(req))
-        if bool(req['success']):
-            x = p.get_d().items()
-            r['sent'][i] = {}
-            for key, value in iter(x):
-                r['sent'][i][str(key)] = str(value)
-                # app.logger.debug(str(key) + "= " + str(value))
-            i += 1
-        else:
-            x = p.get_d().items()
-            r['failed'][i] = {}
-            r['failed'][i]['Error'] = req['Error']
-            for key, value in iter(x):
-                r['failed'][i][str(key)] = str(value)
-                # app.logger.debug(str(key) + "= " + str(value))
-            i += 1
-    return render_template('send_movies.html', sent=r['sent'], failed=r['failed'], full=r)
+    job_list = db.session.query(models.Job).filter_by(hasnicetitle=True, disctype="dvd").all()
+    return_job_list = [job.job_id for job in job_list]
+    return render_template('send_movies.html', job_list=return_job_list)
 
 
 @app.errorhandler(Exception)
 def handle_exception(sent_error):
     """
-    Exception handler
+    Exception handler - This breaks all of the normal debug functions \n
     :param sent_error: error
     :return: error page
     """
