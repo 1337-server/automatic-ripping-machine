@@ -59,5 +59,5 @@ done
 chown -R arm:arm /etc/arm/
 if [[ ! -f "/etc/abcde.conf" ]] ; then
     # abcde.conf is expected in /etc by the abcde installation
-    ln -s "/etc/arm/config/abcde.conf" "/etc/abcde.conf"
+    ln -sf "/etc/arm/config/abcde.conf" "/etc/abcde.conf"
 fi
