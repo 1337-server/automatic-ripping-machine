@@ -161,21 +161,22 @@ function install_arm_live_env() {
 
 function setup_config_files() {
     ##### Setup ARM-specific config files if not found
-    sudo mkdir -p /etc/arm/config
-    CONFS="arm.yaml apprise.yaml"
+    mkdir -p /etc/arm/config
+    CONFS="arm.yaml apprise.yaml abcde.conf"
     for conf in $CONFS; do
         thisConf="/etc/arm/config/${conf}"
         if [[ ! -f "${thisConf}" ]] ; then
-            echo "creating config file ${thisConf}"
+            echo "Config not found! Creating config file: ${thisConf}"
             # Don't overwrite with defaults during reinstall
             cp --no-clobber "/opt/arm/setup/${conf}" "${thisConf}"
         fi
     done
-    chown -R arm:arm /etc/arm/
 
-    # abcde.conf is expected in /etc by the abcde installation
-    cp --no-clobber "/opt/arm/setup/.abcde.conf" "/etc/.abcde.conf"
-    chown arm:arm "/etc/.abcde.conf"
+    chown -R arm:arm /etc/arm/
+    if [[ ! -f "/etc/abcde.conf" ]] ; then
+        # abcde.conf is expected in /etc by the abcde installation
+        ln -sf "/etc/arm/config/abcde.conf" "/etc/abcde.conf"
+    fi
 
     if [[ $port_flag ]]; then
         echo -e "${RED}Non-default port specified, updating arm config...${NC}"
