@@ -102,7 +102,7 @@ apt install python3-dev python3-pip python3-venv python3-wheel
 pip3 install -U wheel
 pip3 install -r requirements.txt
 ln -s /opt/arm/setup/51-automedia.rules /lib/udev/rules.d/
-ln -s /opt/arm/setup/.abcde.conf /home/arm/
+ln -s /opt/arm/setup/abcde.conf /home/arm/
 cp docs/arm.yaml.sample arm.yaml
 sudo chown arm:arm arm.yaml
 mkdir -p /etc/arm/

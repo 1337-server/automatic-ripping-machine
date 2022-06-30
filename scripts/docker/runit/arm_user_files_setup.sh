@@ -44,19 +44,20 @@ for dir in $SUBDIRS ; do
     chown -R arm:arm "$thisDir"
 done
 
-    ##### Setup ARM-specific config files if not found
-    mkdir -p /etc/arm/config
-    CONFS="arm.yaml apprise.yaml"
-    for conf in $CONFS; do
-        thisConf="/etc/arm/config/${conf}"
-        if [[ ! -f "${thisConf}" ]] ; then
-            echo "creating config file ${thisConf}"
-            # Don't overwrite with defaults during reinstall
-            cp --no-clobber "/opt/arm/setup/${conf}" "${thisConf}"
-        fi
-    done
-    chown -R arm:arm /etc/arm/
+##### Setup ARM-specific config files if not found
+mkdir -p /etc/arm/config
+CONFS="arm.yaml apprise.yaml abcde.conf"
+for conf in $CONFS; do
+    thisConf="/etc/arm/config/${conf}"
+    if [[ ! -f "${thisConf}" ]] ; then
+        echo "Config not found! Creating config file: ${thisConf}"
+        # Don't overwrite with defaults during reinstall
+        cp --no-clobber "/opt/arm/setup/${conf}" "${thisConf}"
+    fi
+done
 
+chown -R arm:arm /etc/arm/
+if [[ ! -f "/etc/abcde.conf" ]] ; then
     # abcde.conf is expected in /etc by the abcde installation
-    cp --no-clobber "/opt/arm/setup/.abcde.conf" "/etc/.abcde.conf"
-    chown arm:arm "/etc/.abcde.conf"
+    ln -sf "/etc/arm/config/abcde.conf" "/etc/abcde.conf"
+fi
