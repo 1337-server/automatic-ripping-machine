@@ -38,7 +38,7 @@ jobs:
 
             -
                 name: Set tag for non-default branch
-                if: ${{ steps.branch-name.outputs.ref_branch }} != ${{ steps.branch-name.outputs.default_branch }}
+                if: steps.branch-name.outputs.is_default == 'false'
                 run: |
                     echo "Branch name is ${{ steps.branch-name.outputs.ref_branch }}"
                     echo "Main name is ${{ steps.branch-name.outputs.default_branch }}"
