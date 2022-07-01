@@ -16,7 +16,7 @@ body:
         - label: I have searched the existing issues
           required: true
   - type: textarea
-    id: what is the issue
+    id: what-is-the-issue
     attributes:
       label: Describe the issue ?
       description: A clear and concise description of what the security issue is
