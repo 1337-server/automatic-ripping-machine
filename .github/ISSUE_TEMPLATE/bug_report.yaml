@@ -63,7 +63,18 @@ body:
         - Other (please state in `Anything else?` section)
     validations:
       required: true
-  - type: textarea
+ Log file
+
+ - type: textarea
+    id: armversion
+    attributes:
+      label: ARM Release Version or Git hash (You can find this in the arm settings page)
+      description: ARM Release Version or githash
+      placeholder: v2.6.2
+    validations:
+      required: true
+ 
+ - type: textarea
     id: expected
     attributes:
       label: Expected behavior?
