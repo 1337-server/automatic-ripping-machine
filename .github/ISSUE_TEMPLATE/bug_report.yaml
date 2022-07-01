@@ -28,7 +28,7 @@ body:
       description: Please view all releases to confirm that this issue hasn't already been fixed.
       options:
         - label: I'm using the latest release
-          required: true
+          required: false
   - type: textarea
     id: what-happened
     attributes:
@@ -69,7 +69,10 @@ body:
     attributes:
       label: ARM Release Version or Git hash (You can find this in the arm settings page)
       description: ARM Release Version or githash
-      placeholder: v2.6.2
+      placeholder: |
+        v2.6.2
+        v2.2.0
+        06b4f9fc2af6981716836489aa3a735a03a45329
     validations:
       required: true
 
