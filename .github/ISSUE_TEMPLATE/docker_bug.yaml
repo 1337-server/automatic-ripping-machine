@@ -1,6 +1,6 @@
 name: 🐞 Docker Bug
 description: Create a report to help us improve the docker image
-title: "[BUG] <title>"
+title: "[🐞] <title>"
 labels: [bug, docker]
 assignees: [theource]
 
@@ -43,6 +43,14 @@ body:
         4. See error...
     validations:
       required: true
+  - type: checkboxes
+    id: build
+    attributes:
+      label: Built from source
+      description: Did you build the image yourself or pull
+      options:
+        - label: I Built the image from source
+          required: false
   - type: dropdown
     id: os
     attributes:
@@ -54,8 +62,8 @@ body:
         - ubuntu-18.04
         - Debian 10
         - Debian 11
-        - Docker
-        - Other
+        - Other (Please state in `Anything else` section)
+        - Pulled image
     validations:
       required: true
   - type: textarea
@@ -90,12 +98,4 @@ body:
       description: By submitting this issue, you agree to follow our [Code of Conduct](../blob/main/CODE_OF_CONDUCT.md)
       options:
         - label: I agree to follow this project's Code of Conduct
-          required: true
-  - type: checkboxes
-    id: build
-    attributes:
-      label: Built from source
-      description: Did you build the image yourself or pull
-      options:
-        - label: I Build the image from source
           required: true
