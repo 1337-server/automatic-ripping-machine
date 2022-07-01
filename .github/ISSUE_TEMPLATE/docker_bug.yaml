@@ -1,7 +1,7 @@
 name: 🐞 Docker Bug
 description: Create a report to help us improve
 title: "[BUG] <title>"
-labels: [bug], docker
+labels: [bug, docker]
 
 body:
   - type: markdown
