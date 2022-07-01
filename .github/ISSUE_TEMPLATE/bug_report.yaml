@@ -64,7 +64,7 @@ body:
     validations:
       required: true
 
- - type: textarea
+  - type: textarea
     id: armversion
     attributes:
       label: ARM Release Version or Git hash (You can find this in the arm settings page)
@@ -72,8 +72,8 @@ body:
       placeholder: v2.6.2
     validations:
       required: true
- 
- - type: textarea
+
+  - type: textarea
     id: expected
     attributes:
       label: Expected behavior?
