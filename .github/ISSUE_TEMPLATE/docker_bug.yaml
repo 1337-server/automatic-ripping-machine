@@ -1,6 +1,6 @@
-name: 🐞 Docker Bug
+name: 🐋🐞 Docker Bug
 description: Create a report to help us improve the docker image
-title: "🐞 <title>"
+title: "🐋🐞 <title>"
 labels: [bug, docker]
 assignees: [theource]
 
