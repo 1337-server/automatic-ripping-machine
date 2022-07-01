@@ -2,6 +2,7 @@ name: 🐞 Docker Bug
 description: Create a report to help us improve the docker image
 title: "[BUG] <title>"
 labels: [bug, docker]
+assignees: [theource]
 
 body:
   - type: markdown
@@ -89,4 +90,12 @@ body:
       description: By submitting this issue, you agree to follow our [Code of Conduct](../blob/main/CODE_OF_CONDUCT.md)
       options:
         - label: I agree to follow this project's Code of Conduct
+          required: true
+  - type: checkboxes
+    id: build
+    attributes:
+      label: Built from source
+      description: Did you build the image yourself or pull
+      options:
+        - label: I Build the image from source
           required: true
