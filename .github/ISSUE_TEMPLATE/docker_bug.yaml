@@ -46,7 +46,7 @@ body:
   - type: checkboxes
     id: build
     attributes:
-      label: Built from source
+      label: Built from source files ?
       description: Did you build the image yourself or pull from a repository ?
       options:
         - label: I Built the image from source
