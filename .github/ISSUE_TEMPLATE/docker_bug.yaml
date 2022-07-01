@@ -1,6 +1,6 @@
-name: 🐋🐞 Docker Bug
-description: Create a report to help us improve the docker image
-title: "🐋🐞 <title>"
+name: 🐋 Docker Bug
+description: Create a bug report for the docker image
+title: "🐋 <title>"
 labels: [bug, docker]
 assignees: [theource]
 
@@ -54,16 +54,14 @@ body:
   - type: dropdown
     id: os
     attributes:
-      label: What OS are you seeing the problem on?
+      label: What architecture are you seeing the problem on?
       multiple: true
       options:
         - all
-        - ubuntu-20.04
-        - ubuntu-18.04
-        - Debian 10
-        - Debian 11
+        - amd64
+        - arm64
+        - armv7
         - Other (Please state in `Anything else` section)
-        - Pulled image
     validations:
       required: true
   - type: textarea
