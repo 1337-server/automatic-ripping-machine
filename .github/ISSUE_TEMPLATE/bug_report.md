@@ -1,14 +1,14 @@
 ---
-name: Bug Report
+name: 🐛 Bug Report
 about: Create a report to help us improve
-title: ''
+title: '🐛 < title >'
 labels: bug
 assignees: 1337-server
 
 ---
 
-- [ ] I have checked the wiki
-- [ ] I have searched for similar issues
+- [] I have checked the wiki
+- [] I have searched for similar issues
 
 **Describe the bug**
 A clear and concise description of what the bug is.
