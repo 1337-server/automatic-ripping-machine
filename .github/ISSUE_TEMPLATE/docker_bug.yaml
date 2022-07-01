@@ -47,7 +47,7 @@ body:
     id: build
     attributes:
       label: Built from source
-      description: Did you build the image yourself or pull
+      description: Did you build the image yourself or pull from a repository ?
       options:
         - label: I Built the image from source
           required: false
