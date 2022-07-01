@@ -36,15 +36,6 @@ body:
     validations:
       required: true
   - type: textarea
-    id: expected
-    attributes:
-      label: error causes
-      description: A clear and concise description of the error and its output
-      placeholder: The error and its output if applicable
-    validations:
-      required: true
-      
-  - type: textarea
     id: correction
     attributes:
       label: If you are able please provide the correction here
