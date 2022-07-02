@@ -22,7 +22,7 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: true
-    - name: Set up Python 3.10
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: "3.6"
@@ -45,3 +45,9 @@ jobs:
         sudo cp setup/.abcde.conf /etc/arm/config/abcde.conf
     - name: Run A.R.M ui
       run: timeout 1 python ./arm/runui.py || code=$?; if [[ $code -ne 124 && $code -ne 0 ]]; then exit $code; fi
+    - name: Test MakeMKV
+      run: makemkvcon | grep www.makemkv.com/developers || exit 1
+    - name: Test HandBrake
+      run: HandBrakeCLI --version || exit 1
+    - name: Test abcde
+      run: abcde -v || exit 1
