@@ -112,8 +112,8 @@ function install_arm_requirements() {
         at \
         libdvd-pkg lsdvd
     dpkg-reconfigure --frontend noninteractive libdvd-pkg
-    #build_makemkv
-    #build_handbrakecli
+    build_makemkv
+    build_handbrakecli
 }
 
 function build_handbrakecli(){
