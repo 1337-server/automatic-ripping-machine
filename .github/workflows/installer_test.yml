@@ -29,6 +29,7 @@ jobs:
     - name: Fix dependencies
       run: |
         sudo apt update && sudo apt-get install libgnutls28-dev libcurl4-openssl-dev libssl-dev libdiscid-dev
+        echo "GITHUB_ACTIONS=True" >> $GITHUB_ENV
     - name: Run Installer
       run: |
         chmod +x scripts/installers/debian-install.sh
