@@ -105,8 +105,7 @@ function install_arm_requirements() {
         glyrc \
         default-jre-headless \
         libavcodec-extra \
-        net-tools \
-        netstat
+        net-tools
 
     apt install -qqy \
         imagemagick \
@@ -308,7 +307,9 @@ install_python_requirements
 setup_autoplay
 setup_syslog_rule
 install_armui_service
-launch_setup
+if [[ -z "${GITHUB_ACTIONS}" ]]; then
+  launch_setup
+fi
 
 #advise to reboot
 echo
