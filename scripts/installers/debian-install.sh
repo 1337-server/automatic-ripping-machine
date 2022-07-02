@@ -105,7 +105,8 @@ function install_arm_requirements() {
         glyrc \
         default-jre-headless \
         libavcodec-extra \
-        net-tools
+        net-tools \
+        netstat
 
     apt install -qqy \
         imagemagick \
