@@ -7,8 +7,8 @@ on:
   # Triggers the workflow on push or pull request events but only for the v2.5.0_dev branch
   push:
     branches: [ main, v2_devel, v2_master ]
-    paths:
-      - 'scripts/installers/debian-install.sh'
+    #paths:
+    #  - 'scripts/installers/debian-install.sh'
   pull_request:
     branches: [ main, v2_devel, v2_master]
   # Allows you to run this workflow manually from the Actions tab
