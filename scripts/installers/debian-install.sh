@@ -225,7 +225,7 @@ function install_arm_live_env() {
     cd /opt
     clone_arm
     cd arm
-    sudo -u arm pip3 install -r requirements.txt --user
+    pip3 install -r requirements.txt
     cp ./setup/51-automedia.rules /etc/udev/rules.d/
     create_abcde_symlink
     cp --no-clobber ./setup/arm.yaml /etc/arm/config/arm.yaml
@@ -245,7 +245,7 @@ function install_python_requirements {
     # running pip with sudo can result in permissions errors, run as arm
     sudo -u arm pip3 install --upgrade pip wheel setuptools psutil pyudev
     sudo -u arm pip3 install --ignore-installed --prefer-binary -r requirements.txt
-    sudo -u arm pip3 install flask-bcrypt --user
+    pip3 install flask-bcrypt --user
 }
 
 function setup_autoplay() {
