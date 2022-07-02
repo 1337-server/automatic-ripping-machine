@@ -306,7 +306,7 @@ install_python_requirements
 setup_autoplay
 setup_syslog_rule
 install_armui_service
-if [[ -z "${GITHUB_ACTIONS}" ]]; then
+if [[ ! -z "${GITHUB_ACTIONS}" ]]; then
   echo -e "${RED}GITHUB ACTIONS.${NC}"
   launch_setup
 fi
