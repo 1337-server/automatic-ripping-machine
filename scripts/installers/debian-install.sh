@@ -245,7 +245,7 @@ function install_python_requirements {
     # running pip with sudo can result in permissions errors, run as arm
     sudo -u arm pip3 install --upgrade pip wheel setuptools psutil pyudev
     sudo -u arm pip3 install --ignore-installed --prefer-binary -r requirements.txt
-    pip3 install flask-bcrypt --user
+    pip3 install flask-bcrypt flask-bcrypt flask_bcrypt --user
 }
 
 function setup_autoplay() {
