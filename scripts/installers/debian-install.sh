@@ -228,6 +228,7 @@ function install_arm_live_env() {
     cp ./setup/51-automedia.rules /etc/udev/rules.d/
     create_abcde_symlink
     cp --no-clobber ./setup/arm.yaml /etc/arm/config/arm.yaml
+    cp --no-clobber ./setup/apprise.yaml /etc/arm/config/apprise.yaml
     chown arm:arm /etc/arm/config/arm.yaml
     chown arm:arm /etc/arm/config
     create_arm_config_symlink
