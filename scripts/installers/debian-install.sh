@@ -226,6 +226,7 @@ function install_arm_live_env() {
     clone_arm
     cd arm
     sudo -u arm pip3 install -r requirements.txt
+    sudo -u arm pip3 install bcrypt
     cp ./setup/51-automedia.rules /etc/udev/rules.d/
     create_abcde_symlink
     cp --no-clobber ./setup/arm.yaml /etc/arm/config/arm.yaml
