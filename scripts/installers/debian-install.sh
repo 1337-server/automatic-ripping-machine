@@ -77,7 +77,7 @@ function install_arm_requirements() {
     mkdir -p /home/arm
     mkdir -p /etc/arm/config
     install_arm_build_tools
-    echo -e "${RED}Installing ARM requirments${NC}"
+    echo -e "${RED}Installing ARM requirements${NC}"
     apt update -qqy
     apt-get install -qqy \
         build-essential \
