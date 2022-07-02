@@ -289,9 +289,6 @@ function install_armui_service() {
 
 function launch_setup() {
     echo -e "${RED}Launching ArmUI first-time setup${NC}"
-    python3 /opt/arm/arm/runui.py
-    sleep 5  # Waits 5 seconds, This gives time for service to start
-    curl --fail http://localhost:8080/ || exit 1
     site_addr=$(sudo netstat -tlpn | awk '{ print $4 }' | grep ".*:${PORT}")
     if [[ -z "$site_addr" ]]; then
         echo -e "${RED}ERROR: ArmUI site is not running. Run \"sudo systemctl status armui\" to find out why${NC}"
