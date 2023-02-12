@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: "Test Debian installer"
+name: "Test Ubuntu installer"
 
 # Controls when the action will run.
 on:
@@ -32,6 +32,10 @@ jobs:
         echo "GITHUB_ACTIONS=True" >> $GITHUB_ENV
         pip3 install --ignore-installed --prefer-binary -r requirements.txt
         pip3 install flask-bcrypt flask-bcrypt flask_bcrypt --user
+        # Test fix
+        pip3 install --upgrade --user setuptools==58.3.0
+        pip3 uninstall -y distro-info
+        pip3 install distro-info==1.0
     - name: Run Installer
       run: |
         chmod +x scripts/installers/debian-install.sh
