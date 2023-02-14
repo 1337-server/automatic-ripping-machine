@@ -41,11 +41,28 @@ jobs:
 
             -
                 name: Set tag for non-default branch
-                if: steps.branch-name.outputs.is_default == 'false' && steps.branch-name.outputs.default_branch != ''
+                if: ${{ steps.branch-name.outputs.is_default == 'false' && steps.branch-name.outputs.default_branch != '' && github.actor != 'dependabot[bot]' }}
                 run: |
+                    echo "Run me: (${{ steps.branch-name.outputs.is_default == 'false' && steps.branch-name.outputs.default_branch != '' && github.actor != 'dependabot[bot]' }})"
+                    echo "Set tag for PR: ${{ github.event_name == 'pull_request' || github.actor == 'dependabot[bot]' && steps.branch-name.outputs.is_default == 'false' && steps.branch-name.outputs.default_branch != '' }} "
+                    echo "Actor = ${{ github.actor }}"
+                    echo "event name is ${{ github.event_name }}"
+                    echo "PR_NUMBER=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')"
+                    echo "PR NAME: ${GITHUB_REF##*/}"
+                    echo "PR number: ${{ github.event.pull_request.number }}"
                     echo "Branch name is ${{ steps.branch-name.outputs.ref_branch }}"
                     echo "Main name is ${{ steps.branch-name.outputs.default_branch }}"
                     echo "TAG=${{ steps.branch-name.outputs.ref_branch }}" >> $GITHUB_ENV
+            -
+                name: Set tag for PR
+                if: ${{ github.event_name == 'pull_request' || github.actor == 'dependabot[bot]' && steps.branch-name.outputs.is_default == 'false' && steps.branch-name.outputs.default_branch != '' }}
+                run: |
+                    SAFETAG="${{ steps.branch-name.outputs.ref_branch }}"
+                    #echo "Tag will be: pr${SAFETAG%/*}"
+                    echo "Branch name is ${{ steps.branch-name.outputs.ref_branch }}" # 102/merge
+                    echo "Main name is ${{ steps.branch-name.outputs.default_branch }}"
+                    echo "TAG=pr${GITHUB_REF##*/}" >> $GITHUB_ENV
+                    echo "VERSION=pr${GITHUB_REF##*/}" >> $GITHUB_ENV
 
             # Workaround: https://github.com/docker/build-push-action/issues/461
             -
