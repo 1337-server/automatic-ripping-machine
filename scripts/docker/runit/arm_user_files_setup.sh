@@ -29,17 +29,19 @@ elif [[ $ARM_UID -eq $DEFAULT_GID ]]; then
     echo -e "Updating arm group id $ARM_GID to default (1000)..."
     groupmod -og $DEFAULT_GID arm
 fi
+echo "Adding arm user to 'render' group"
+usermod -a -G render arm
 
 ### Setup Files
 chown -R arm:arm /opt/arm
 
 # setup needed/expected dirs if not found
-SUBDIRS="media media/completed media/raw media/movies logs db Music .MakeMKV"
+SUBDIRS="media media/completed media/raw media/movies media/transcode logs logs/progress db Music .MakeMKV"
 for dir in $SUBDIRS ; do
     thisDir="$ARM_HOME/$dir"
     if [[ ! -d "$thisDir" ]] ; then
         echo "Creating dir: $thisDir"
-        mkdir -p 0777 "$thisDir"
+        mkdir -p "$thisDir"
     fi
     chown -R arm:arm "$thisDir"
 done
@@ -62,7 +64,3 @@ done
     ln -sf /etc/.abcde.conf /etc/arm/config/abcde.conf
     chown arm:arm "/etc/.abcde.conf" "/etc/arm/config/abcde.conf"
 
-echo "setting makemkv app-Key"
-if ! [[ -z "${MAKEMKV_APP_KEY}" ]] ; then
-  echo "app_Key = \"${MAKEMKV_APP_KEY}\"" > "${ARM_HOME}/.MakeMKV/settings.conf"
-fi
