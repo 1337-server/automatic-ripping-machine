@@ -304,4 +304,3 @@ def run_makemkv(cmd, logfile):
         subprocess.run(f"{cmd} >> {logfile}", capture_output=True, shell=True, check=True)
     except subprocess.CalledProcessError as mkv_error:
         raise MakeMkvRuntimeError(mkv_error) from mkv_error
-
