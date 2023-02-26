@@ -444,4 +444,3 @@ def read_notification(notify_id):
     else:
         return_json['message'] = "Notification already read or not found!"
     return return_json
-
