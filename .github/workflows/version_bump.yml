@@ -100,11 +100,39 @@ jobs:
             // Prepare the message based on the title flag
             let prBody;
             if (titleFlag === "false") {
-              prBody = `ARM Version Bot\n **PR title:** ${prTitle}\n **No valid version flag found**. PR title must include either [FEATURE] or [BUGFIX] to auto-increment the version.\n **Please update the PR title** and re-run the workflow.`;
-            } else {
-              prBody = `ARM Version Bot:\n **PR title:** ${prTitle}\n **Current version:** ${currentVersion}\n **Required Version:** ${newVersion}\n **PR Version:** ${branchVersion}\n **Release version:** ${versionType}`;
-            }
+                prBody = `
+            ### 🚨 ARM Version Bot
 
+            **PR Title:** \`${prTitle}\`
+
+            > ❌ **No valid version flag found.**
+            > 
+            > Please include either \`[FEATURE]\` or \`[BUGFIX]\` in your PR title to trigger auto-increment.
+            > 
+            > _Update the PR title and re-run the workflow._
+                `;
+            } else {
+                let headerIcon = currentVersion === newVersion ? "✅" : "❌";
+                let warning = "";
+                if (currentVersion !== newVersion) {
+                    warning = "> ⚠️ **Warning:** The required version (`" + newVersion + "`) does not match the current version (`" + currentVersion + "`) inside your VERSION file.\n" +
+                              "> This PR will not be merged unless you bump the version number.\n";
+                }
+                prBody = `
+            ### ${headerIcon} ARM Version Bot
+
+            **PR Title:** \`${prTitle}\`
+
+            | Current Version | Required Version | PR Branch Version | Release Type |
+            | :-------------: | :--------------: | :---------------: | :----------: |
+            | \`${currentVersion}\` | \`${newVersion}\` | \`${branchVersion}\` | \`${versionType}\` |
+
+            ${warning}
+            ---
+            _This comment was generated automatically by the ARM Version Bot._
+                `;
+            }
+            
             // Get existing comments
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
