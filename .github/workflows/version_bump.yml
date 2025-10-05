@@ -53,13 +53,10 @@ jobs:
             VERSION_TYPE="minor"
             echo "PR set to FEATURE updating minor version"
             TITLE_FLAG="true"
-          elif [[ "$PR_TITLE" == *"[BUGFIX]"* ]]; then
+          else
             VERSION_TYPE="patch"
             echo "PR set to BUGFIX updating patch version"
             TITLE_FLAG="true"
-          else
-            echo "No version bump flag found in PR title. Exiting."
-            echo "Edit your PR title to include either FEATURE or BUGFIX"
           fi
           
           # If Feature or Bugfix update the version
