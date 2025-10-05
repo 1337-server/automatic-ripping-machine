@@ -93,7 +93,7 @@ jobs:
       - name: Comment on PR with no spam
         uses: actions/github-script@v8
         with:
-          github-token: ${{ secrets.VERSION_BOT }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             // Retrieve variables from the environment
             const titleFlag = process.env.TITLE_FLAG;
