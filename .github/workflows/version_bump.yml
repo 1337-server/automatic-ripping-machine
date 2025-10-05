@@ -92,6 +92,13 @@ jobs:
 
       - name: Comment on PR with no spam
         uses: actions/github-script@v8
+        env:
+          TITLE_FLAG: ${{ env.TITLE_FLAG }}
+          PR_TITLE: ${{ env.PR_TITLE }}
+          NEW_VERSION: ${{ env.NEW_VERSION }}
+          MAIN_VERSION: ${{ env.MAIN_VERSION }}
+          BRANCH_VERSION: ${{ env.BRANCH_VERSION }}
+          VERSION_TYPE: ${{ env.VERSION_TYPE }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
