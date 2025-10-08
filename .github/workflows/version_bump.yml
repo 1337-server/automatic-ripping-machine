@@ -1,17 +1,5 @@
-#name: "Version Increment"
-#
-#on:
-#  # Run this action on any Pull Request raised against ARM
-# # pull_request:
-#    # Ensure changes re-run the version script (i.e. title change)
-#    types: [opened, edited, synchronize]
-#    # Don't run on changes to the below paths
-#    paths-ignore:
-#      - 'arm_wiki/**'
-#      - '.github/**'
-#
-#  # Allows you to run this workflow manually from the Actions tab
-#  workflow_dispatch:
+on:
+  pull_request:
 
 permissions:
   contents: write
@@ -51,13 +39,10 @@ jobs:
             VERSION_TYPE="minor"
             echo "PR set to FEATURE updating minor version"
             TITLE_FLAG="true"
-          elif [[ "$PR_TITLE" == *"[BUGFIX]"* ]]; then
+          else
             VERSION_TYPE="patch"
             echo "PR set to BUGFIX updating patch version"
             TITLE_FLAG="true"
-          else
-            echo "No version bump flag found in PR title. Exiting."
-            echo "Edit your PR title to include either FEATURE or BUGFIX"
           fi
           
           # If Feature or Bugfix update the version
@@ -93,8 +78,15 @@ jobs:
 
       - name: Comment on PR with no spam
         uses: actions/github-script@v8
+        env:
+          TITLE_FLAG: ${{ env.TITLE_FLAG }}
+          PR_TITLE: ${{ env.PR_TITLE }}
+          NEW_VERSION: ${{ env.NEW_VERSION }}
+          MAIN_VERSION: ${{ env.MAIN_VERSION }}
+          BRANCH_VERSION: ${{ env.BRANCH_VERSION }}
+          VERSION_TYPE: ${{ env.VERSION_TYPE }}
         with:
-          github-token: ${{ secrets.VERSION_BOT }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             // Retrieve variables from the environment
             const titleFlag = process.env.TITLE_FLAG;
@@ -108,11 +100,39 @@ jobs:
             // Prepare the message based on the title flag
             let prBody;
             if (titleFlag === "false") {
-              prBody = `ARM Version Bot\n **PR title:** ${prTitle}\n **No valid version flag found**. PR title must include either [FEATURE] or [BUGFIX] to auto-increment the version.\n **Please update the PR title** and re-run the workflow.`;
-            } else {
-              prBody = `ARM Version Bot:\n **PR title:** ${prTitle}\n **Current version:** ${currentVersion}\n **Required Version:** ${newVersion}\n **PR Version:** ${branchVersion}\n **Release version:** ${versionType}`;
-            }
+                prBody = `
+            ### 🚨 ARM Version Bot
 
+            **PR Title:** \`${prTitle}\`
+
+            > ❌ **No valid version flag found.**
+            > 
+            > Please include either \`[FEATURE]\` or \`[BUGFIX]\` in your PR title to trigger auto-increment.
+            > 
+            > _Update the PR title and re-run the workflow._
+                `;
+            } else {
+                let headerIcon = currentVersion === newVersion ? "✅" : "❌";
+                let warning = "";
+                if (currentVersion !== newVersion) {
+                    warning = "> ⚠️ **Warning:** The required version (`" + newVersion + "`) does not match the current version (`" + currentVersion + "`) inside your VERSION file.\n" +
+                              "> This PR will not be merged unless you bump the version number.\n";
+                }
+                prBody = `
+            ### ${headerIcon} ARM Version Bot
+
+            **PR Title:** \`${prTitle}\`
+
+            | Current Version | Required Version | PR Branch Version | Release Type |
+            | :-------------: | :--------------: | :---------------: | :----------: |
+            | \`${currentVersion}\` | \`${newVersion}\` | \`${branchVersion}\` | \`${versionType}\` |
+
+            ${warning}
+            ---
+            _This comment was generated automatically by the ARM Version Bot._
+                `;
+            }
+            
             // Get existing comments
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
